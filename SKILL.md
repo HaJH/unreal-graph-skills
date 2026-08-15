@@ -62,38 +62,35 @@ export default {
 
 ## Available node types
 
-Constants and parameters — `Constant`, `Constant2Vector`, `Constant3Vector`,
-`Constant4Vector`, `ScalarParameter`, `VectorParameter`.
+**257 expressions, generated from the engine.** `ue-material-api.mjs` is produced by
+`scripts/generate-ue-api.mjs` reading an installed Unreal, so every pin name, pin order and
+output shape is the engine's own rather than a guess. Use the Unreal class name without the
+`MaterialExpression` prefix — `Multiply`, `TextureSample`, `Fresnel`, `Panner`,
+`ComponentMask`, `Arctangent2Fast`, `DepthFade`. A few short aliases exist for the names
+nobody spells out: `Lerp`, `Dot`, `Cross`.
 
-Texturing and UVs — `TextureSample`, `TextureCoordinate`, `Panner`, `Rotator`, `Time`.
-
-Maths — `Add`, `Subtract`, `Multiply`, `Divide`, `Power`, `Fmod`, `Min`, `Max`, `Dot`,
-`Cross`, `OneMinus`, `Abs`, `Saturate`, `Frac`, `Floor`, `Ceil`, `Sine`, `Cosine`,
-`Normalize`, `SquareRoot`, `Arctangent2`, `Arctangent2Fast`.
-
-`Arctangent2*` takes `Y` and `X` and returns radians over -PI..PI — the basis for any radial
-sweep. Use the `Fast` variant for UI, where the approximation error is well under a pixel.
-
-Blending and channels — `Lerp`, `Clamp`, `ComponentMask`, `AppendVector`, `If`.
-
-Surface and scene — `Fresnel`, `VertexNormalWS`, `CameraVectorWS`, `WorldPosition`,
-`ObjectPositionWS`, `DepthFade`.
+Grep `ue-material-api.mjs` when unsure — each entry lists its pins verbatim.
 
 Output — `MaterialOutput` for a surface material, `MaterialOutputUI` for one whose domain is
 User Interface (Final Color / Opacity / Opacity Mask instead of the full lit set).
 
-**Adding one:** append to `NODES` in `material-nodes.mjs`. An input pin needs `prop` — the
-expression property that carries the wire — because the pin label and the property name
-often differ (`UVs` → `Coordinates`, `Exp` → `Exponent`). Pick an `out` shape from
-`OUTPUT_SHAPES`. If the node carries a literal value, give it `pinDefaults` as well: a value
-lives *twice* in T3D, as an expression property and as the pin's `DefaultValue`, and Unreal
-reads the pin when pasting — so a node whose two copies disagree renders correctly but pastes
-in with the wrong number. `emitT3D` refuses to emit when they drift.
+Not included: Substrate/Strata slabs, the custom-output family, and structural nodes
+(comments, reroutes, composites, function in/out) — separate subsystems with their own wiring
+rules.
 
-`reference/ENCODING.md` documents the serialisation format the table encodes. To read a shape
-off a real node, add it in the Material Editor, wire its inputs, copy it, save the clipboard to
-a file, and run `node reference/survey.mjs <file.t3d>` — the output is shaped like a `NODES`
-entry.
+**Regenerating:** `node scripts/generate-ue-api.mjs <engine root>`. Run it when moving to a
+new engine version; pin names do change between versions.
+
+**Hand-written overlay:** `material-nodes.mjs` adds only what the headers cannot express —
+the inline literal pins (a Constant's number is not an `FExpressionInput`), TextureSample's
+collapsed pins, and `pinDefaults`. A value lives *twice* in T3D, as an expression property
+and as the pin's `DefaultValue`, and Unreal reads the pin when pasting, so a node whose two
+copies disagree renders correctly but pastes in with the wrong number. `emitT3D` refuses to
+emit when they drift.
+
+`reference/ENCODING.md` documents the serialisation format. `node reference/survey.mjs
+<file.t3d>` prints the pin encoding of any Material Editor copy — use it to check a node
+whose entry is marked `pinNamesVary`, where the label depends on the node's own settings.
 
 ## Known limits
 
@@ -121,6 +118,8 @@ entry.
 | `material-nodes.mjs` | the node table |
 | `page.template.html` | page shell; graph panel stays in the engine's dark palette |
 | `vendor/` | bue-render (MIT, from blueprintue-self-hosted-edition) |
+| `ue-material-api.mjs` | generated pin names and output shapes, straight from the engine |
+| `scripts/` | `generate-ue-api.mjs` regenerates it; `build-site.mjs` builds the Pages demo |
 | `reference/` | `ENCODING.md` — the T3D format; `survey.mjs` — read a shape off a real copy |
 | `examples/` | working specs; `docs/preview.png` is a headless-Chrome shot of the first |
 

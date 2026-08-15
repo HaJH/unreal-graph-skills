@@ -34,7 +34,7 @@ export default {
 
 ```
 node build.mjs cooldown.spec.mjs cooldown.html
-  19 nodes, 53 pins, 19 wires
+  19 nodes, 52 pins, 19 wires
 ```
 
 ## Install
@@ -82,13 +82,23 @@ fail the build.
 
 ## Node types
 
-Constants and parameters, texturing and UVs, ~20 maths nodes, blending and channels, surface
-and scene, and both material outputs — 46 in all. `SKILL.md` lists them; `material-nodes.mjs`
-is the table.
+**257 expressions, generated from the engine.** `ue-material-api.mjs` is produced by
+`scripts/generate-ue-api.mjs` reading an installed Unreal — pin names, pin order and output
+shapes are the engine's own, not a transcription. Use the Unreal class name without the
+`MaterialExpression` prefix (`Multiply`, `TextureSample`, `Fresnel`, `ComponentMask`,
+`Arctangent2Fast`), plus short aliases for `Lerp`, `Dot`, `Cross`.
 
-Adding one is a table entry. [`reference/ENCODING.md`](reference/ENCODING.md) documents the
-serialisation format, and `reference/survey.mjs` prints the pin encoding of any Material Editor
-copy you feed it — enough to write the entry from.
+```
+node scripts/generate-ue-api.mjs /path/to/UE_5.8
+```
+
+Re-run it when moving engine version — pin names do change between them. Substrate slabs, the
+custom-output family and structural nodes are left out; they are separate subsystems with
+their own wiring rules.
+
+[`reference/ENCODING.md`](reference/ENCODING.md) documents the serialisation format, and
+`reference/survey.mjs` prints the pin encoding of any Material Editor copy — useful for the
+handful of nodes whose pin labels shift with their own settings.
 
 ## Known limits
 

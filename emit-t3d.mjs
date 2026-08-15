@@ -3,7 +3,7 @@
 // The output is the same text Unreal writes when you copy nodes, so it both feeds the
 // renderer and pastes back into a material with Ctrl+V. Writing it by hand is impractical:
 // every pin needs its own GUID, its type encoding, and a LinkedTo entry on both ends.
-import { NODES, OUTPUT_SHAPES } from "./material-nodes.mjs";
+import { NODES } from "./material-nodes.mjs";
 
 // Deterministic GUIDs keep rebuilds byte-stable, which makes diffs meaningful.
 const guid = (seed) => {
@@ -109,6 +109,13 @@ export function emitT3D(spec) {
     if (!NODES[node.type]) throw new Error(`unknown node type "${node.type}" on "${node.id}"`);
   }
 
+  // Most node types have a fixed pin list. A few — Custom above all — carry one pin per
+  // entry the spec declares, so the table may name its inputs with a function instead.
+  const pinsOf = (node) => {
+    const def = NODES[node.type];
+    return typeof def.pins === "function" ? def.pins(node) : def.in;
+  };
+
   // Resolve every wire to a concrete (output pin -> input pin) pair up front.
   const links = [];
   for (const node of nodes) {
@@ -116,10 +123,10 @@ export function emitT3D(spec) {
       const [fromId, fromPin] = String(target).split(".");
       const source = byId.get(fromId);
       if (!source) throw new Error(`"${node.id}.${pinName}" points at unknown node "${fromId}"`);
-      const outputs = OUTPUT_SHAPES[NODES[source.type].out];
+      const outputs = NODES[source.type].out;
       const output = fromPin ? outputs.find(([name]) => name === fromPin) : outputs[0];
       if (!output) throw new Error(`"${fromId}" has no output named "${fromPin}"`);
-      const input = NODES[node.type].in.find(([name]) => name === pinName);
+      const input = pinsOf(node).find(([name]) => name === pinName);
       if (!input) throw new Error(`"${node.type}" has no input pin named "${pinName}"`);
       links.push({ from: { id: fromId, pin: output[0] }, to: { id: node.id, pin: pinName } });
     }
@@ -185,7 +192,7 @@ export function emitT3D(spec) {
         `   NodePosX=${node.x}`,
         `   NodePosY=${node.y}`,
         `   NodeGuid=${guid(`${material}/${node.id}/node`)}`,
-        ...def.in.map((pin) => inputPin(node, pin)),
+        ...pinsOf(node).map((pin) => inputPin(node, pin)),
         "End Object",
       ].join("\n");
     }
@@ -194,14 +201,25 @@ export function emitT3D(spec) {
     const path = `${transient}:MaterialGraph_0.${nodeName(node)}.${exprName(node)}`;
     const ref = `/Script/Engine.${expr}'"${path}"'`;
 
-    // Wired inputs become expression properties referencing the upstream expression.
-    const wiredProps = def.in.flatMap(([name, opts = {}]) => {
-      if (!opts.prop) return [];
+    // What is wired into a named pin, as the pieces a property reference needs.
+    const wiredOf = (name) => {
       const link = links.find((l) => l.to.id === node.id && l.to.pin === name);
-      if (!link) return [];
+      if (!link) return null;
       const source = byId.get(link.from.id);
-      return [`${opts.prop}=(Expression=/Script/Engine.${NODES[source.type].expression}'"${exprName(source)}"')`];
-    });
+      return { expression: NODES[source.type].expression, name: exprName(source) };
+    };
+
+    // Wired inputs become expression properties referencing the upstream expression. A node
+    // whose inputs live in an array rather than in one property each (Custom) builds its own.
+    const wiredProps = def.buildProps
+      ? def.buildProps(node, wiredOf)
+      : pinsOf(node).flatMap(([name, opts = {}]) => {
+        if (!opts.prop) return [];
+        const source = wiredOf(name);
+        return source
+          ? [`${opts.prop}=(Expression=/Script/Engine.${source.expression}'"${source.name}"')`]
+          : [];
+      });
     const literalProps = Object.entries(node.props ?? {}).map(([k, v]) => `${k}=${v}`);
 
     return [
@@ -220,8 +238,8 @@ export function emitT3D(spec) {
       `   NodePosY=${node.y}`,
       ...Object.entries(def.node ?? {}).map(([k, v]) => `   ${k}=${v}`),
       `   NodeGuid=${guid(`${material}/${node.id}/node`)}`,
-      ...def.in.map((pin) => inputPin(node, pin)),
-      ...OUTPUT_SHAPES[def.out].map((pin) => outputPin(node, pin)),
+      ...pinsOf(node).map((pin) => inputPin(node, pin)),
+      ...def.out.map((pin) => outputPin(node, pin)),
       "End Object",
     ].join("\n");
   });
