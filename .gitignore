@@ -2,4 +2,5 @@
 *.html
 !page.template.html
 *.t3d
+_site/
 node_modules/

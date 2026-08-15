@@ -8,10 +8,12 @@ node network: pin-by-pin prose is slow to read and easy to get wrong. This turns
 spec into the same text Unreal writes when you copy nodes, renders it with blueprintue.com's
 own renderer, and produces one self-contained HTML file.
 
-![A cooldown sweep material rendered as an Unreal node graph: TextureCoordinate through a polar-angle chain into the material output](docs/preview.png)
+[![A cooldown sweep material rendered as an Unreal node graph: TextureCoordinate through a polar-angle chain into the material output](docs/preview.png)](https://hajh.github.io/unreal-material-graph-skill/cooldown-sweep.html)
 
-<sub>The real page pans, zooms and goes fullscreen — this is a still of
-[`examples/cooldown-sweep.spec.mjs`](examples/cooldown-sweep.spec.mjs).</sub>
+<sub>**[Open the live graph →](https://hajh.github.io/unreal-material-graph-skill/)** — pan,
+zoom, go fullscreen, and copy the T3D. The still above is
+[`examples/cooldown-sweep.spec.mjs`](examples/cooldown-sweep.spec.mjs), rebuilt from source on
+every push.</sub>
 
 ```js
 // examples/cooldown-sweep.spec.mjs, abridged
