@@ -27,6 +27,13 @@ const PIN_TYPE_TAIL =
 
 const flag = (on) => (on ? "True" : "False");
 
+// A channel tap is carried by the mask bits on the wire, not by the output index: an
+// expression like TextureSample compiles the whole RGBA whichever output you pull from, and
+// FExpressionInput's Mask is what swizzles it down. Unreal writes only the bits that are set.
+const MASK_FIELDS = ["MaskR", "MaskG", "MaskB", "MaskA"];
+const maskFields = (bits) =>
+  bits ? `,Mask=1${[...bits].map((b, i) => (b === "1" ? `,${MASK_FIELDS[i]}=1` : "")).join("")}` : "";
+
 // Nodes with no explicit position are laid out in dependency order, left to right, so a
 // spec only has to name the wiring. Columns come from dependency depth; rows are then
 // relaxed towards the average height of each node's neighbours, which pulls a parameter up
@@ -133,7 +140,12 @@ export function emitT3D(spec) {
       // paste, and its OutputIndex defaults to 0 — so a `.G` tap that is only recorded on the
       // pin draws correctly and pastes in reading the first output instead.
       links.push({
-        from: { id: fromId, pin: output[0], outputIndex: outputs.indexOf(output) },
+        from: {
+          id: fromId,
+          pin: output[0],
+          outputIndex: outputs.indexOf(output),
+          mask: output[2]?.mask,
+        },
         to: { id: node.id, pin: pinName },
       });
     }
@@ -219,7 +231,8 @@ export function emitT3D(spec) {
         expression,
         name: exprName(source),
         outputIndex: link.from.outputIndex,
-        ref: `Expression=/Script/Engine.${expression}'"${exprName(source)}"',OutputIndex=${link.from.outputIndex}`,
+        ref: `Expression=/Script/Engine.${expression}'"${exprName(source)}"'`
+          + `,OutputIndex=${link.from.outputIndex}${maskFields(link.from.mask)}`,
       };
     };
 
@@ -250,6 +263,10 @@ export function emitT3D(spec) {
       `   MaterialExpression=/Script/Engine.${expr}'"${exprName(node)}"'`,
       `   NodePosX=${node.x}`,
       `   NodePosY=${node.y}`,
+      // What the editor lets you rename in place: a parameter carries its own name, and a named
+      // reroute's name IS the variable. Real exports carry the flag on exactly these, and it is
+      // a graph-node property rather than an expression one, so nothing recomputes it on paste.
+      ...(/Parameter$|NamedRerouteDeclaration$/.test(expr) ? ["   bCanRenameNode=True"] : []),
       ...Object.entries(def.node ?? {}).map(([k, v]) => `   ${k}=${v}`),
       `   NodeGuid=${guid(`${material}/${node.id}/node`)}`,
       ...pinsOf(node).map((pin) => inputPin(node, pin)),

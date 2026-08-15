@@ -31,7 +31,7 @@ export const UE_EXPRESSIONS = {
   },
   AntialiasedTextureMask: {
     in: [],
-    out: [["Output", "red"]],
+    out: [["Output", "red", "1000"]],
   },
   AppendVector: {
     in: [["A"], ["B"]],
@@ -99,11 +99,11 @@ export const UE_EXPRESSIONS = {
   },
   Bounds: {
     in: [],
-    out: [["Half Extents", ""], ["Extents", ""], ["Min", ""], ["Max", ""]],
+    out: [["Half Extents", "", "1110"], ["Extents", "", "1110"], ["Min", "", "1110"], ["Max", "", "1110"]],
   },
   BreakMaterialAttributes: {
     in: [],
-    out: [["BaseColor", ""], ["Metallic", "red"], ["Specular", "red"], ["Roughness", "red"], ["Anisotropy", "red"], ["EmissiveColor", ""], ["Opacity", "red"], ["OpacityMask", "red"], ["Normal", ""], ["Tangent", ""], ["WorldPositionOffset", ""], ["SubsurfaceColor", ""], ["ClearCoat", "red"], ["ClearCoatRoughness", "red"], ["AmbientOcclusion", "red"], ["Refraction", ""], ["PixelDepthOffset", "red"], ["ShadingModel"], ["Displacement", "red"]], renames: true,
+    out: [["BaseColor", "", "1110"], ["Metallic", "red", "1000"], ["Specular", "red", "1000"], ["Roughness", "red", "1000"], ["Anisotropy", "red", "1000"], ["EmissiveColor", "", "1110"], ["Opacity", "red", "1000"], ["OpacityMask", "red", "1000"], ["Normal", "", "1110"], ["Tangent", "", "1110"], ["WorldPositionOffset", "", "1110"], ["SubsurfaceColor", "", "1110"], ["ClearCoat", "red", "1000"], ["ClearCoatRoughness", "red", "1000"], ["AmbientOcclusion", "red", "1000"], ["Refraction", "", "1100"], ["PixelDepthOffset", "red", "1000"], ["ShadingModel"], ["Displacement", "red", "1000"]], renames: true,
   },
   BumpOffset: {
     in: [["Coordinate"], ["Height"], ["HeightRatioInput"]],
@@ -123,7 +123,7 @@ export const UE_EXPRESSIONS = {
   },
   ChannelMaskParameter: {
     in: [["Input"]],
-    out: [["Output", "red"]],
+    out: [["Output", "red", "1000"]],
   },
   Clamp: {
     in: [["Input"], ["Min"], ["Max"]],
@@ -155,15 +155,15 @@ export const UE_EXPRESSIONS = {
   },
   Constant2Vector: {
     in: [],
-    out: [["Output", ""], ["Output2", "red"], ["Output3", "green"]],
+    out: [["Output", "", "1100"], ["Output2", "red", "1000"], ["Output3", "green", "0100"]],
   },
   Constant3Vector: {
     in: [],
-    out: [["Output", ""], ["Output2", "red"], ["Output3", "green"], ["Output4", "blue"]],
+    out: [["Output", "", "1110"], ["Output2", "red", "1000"], ["Output3", "green", "0100"], ["Output4", "blue", "0010"]],
   },
   Constant4Vector: {
     in: [],
-    out: [["RGBA", "rgba"], ["R", "red"], ["G", "green"], ["B", "blue"], ["A", "alpha"], ["RGB", ""]],
+    out: [["RGBA", "rgba", "1111"], ["R", "red", "1000"], ["G", "green", "0100"], ["B", "blue", "0010"], ["A", "alpha", "0001"], ["RGB", "", "1110"]],
   },
   ConstantBiasScale: {
     in: [["Input"]],
@@ -187,7 +187,7 @@ export const UE_EXPRESSIONS = {
   },
   CurveAtlasRowParameter: {
     in: [["InputTime"]],
-    out: [["Output", ""], ["Output2", "red"], ["Output3", "green"], ["Output4", "blue"], ["Output5", "alpha"]], renames: true,
+    out: [["Output", "", "1110"], ["Output2", "red", "1000"], ["Output3", "green", "0100"], ["Output4", "blue", "0010"], ["Output5", "alpha", "0001"]], renames: true,
   },
   Custom: {
     in: [],
@@ -199,7 +199,7 @@ export const UE_EXPRESSIONS = {
   },
   DBufferTexture: {
     in: [["UVs", "Coordinates"]],
-    out: [["RGBA", "rgba"], ["RGB", ""], ["A", "alpha"]],
+    out: [["RGBA", "rgba", "1111"], ["RGB", "", "1110"], ["A", "alpha", "0001"]],
   },
   DDX: {
     in: [["Value"]],
@@ -211,7 +211,7 @@ export const UE_EXPRESSIONS = {
   },
   DecalColor: {
     in: [],
-    out: [["RGB", ""], ["R", "red"], ["G", "green"], ["B", "blue"], ["A", "alpha"], ["RGBA", "rgba"]],
+    out: [["RGB", "", "1110"], ["R", "red", "1000"], ["G", "green", "0100"], ["B", "blue", "0010"], ["A", "alpha", "0001"], ["RGBA", "rgba", "1111"]],
   },
   DecalDerivative: {
     in: [],
@@ -279,11 +279,11 @@ export const UE_EXPRESSIONS = {
   },
   DoubleVectorParameter: {
     in: [],
-    out: [["Output", ""], ["Output2", "red"], ["Output3", "green"], ["Output4", "blue"], ["Output5", "alpha"]],
+    out: [["Output", "", "1110"], ["Output2", "red", "1000"], ["Output3", "green", "0100"], ["Output4", "blue", "0010"], ["Output5", "alpha", "0001"]],
   },
   DynamicParameter: {
     in: [],
-    out: [["Output", "red"], ["Output2", "green"], ["Output3", "blue"], ["Output4", "alpha"], ["RGB", ""], ["RGBA", "rgba"]],
+    out: [["Output", "red", "1000"], ["Output2", "green", "0100"], ["Output3", "blue", "0010"], ["Output4", "alpha", "0001"], ["RGB", "", "1110"], ["RGBA", "rgba", "1111"]],
   },
   EvalPhysicsIntegerField: {
     in: [],
@@ -335,7 +335,7 @@ export const UE_EXPRESSIONS = {
   },
   FontSample: {
     in: [],
-    out: [["Output", ""], ["Output2", "red"], ["Output3", "green"], ["Output4", "blue"], ["Output5", "alpha"]],
+    out: [["Output", "", "1110"], ["Output2", "red", "1000"], ["Output3", "green", "0100"], ["Output4", "blue", "0010"], ["Output5", "alpha", "0001"]],
   },
   FontSampleParameter: {
     in: [],
@@ -343,7 +343,7 @@ export const UE_EXPRESSIONS = {
   },
   FontSignedDistance: {
     in: [],
-    out: [["Signed Distance", "red"], ["Smooth Signed Distance", "green"], ["Pixel Distance Factor", "blue"], ["Implicit Opacity", "alpha"]],
+    out: [["Signed Distance", "red", "1000"], ["Smooth Signed Distance", "green", "0100"], ["Pixel Distance Factor", "blue", "0010"], ["Implicit Opacity", "alpha", "0001"]],
   },
   Frac: {
     in: [["Input"]],
@@ -371,11 +371,11 @@ export const UE_EXPRESSIONS = {
   },
   HairAttributes: {
     in: [],
-    out: [["U", "red"], ["V", "green"], ["Length", "red"], ["Radius", "green"], ["Seed", "red"], ["Tangent", ""], ["Root UV", ""], ["BaseColor", ""], ["Roughness", "red"], ["Depth", "red"], ["Coverage", "red"], ["AuxilaryData", "rgba"], ["AtlasUVs", ""], ["Group Index", "red"], ["AO", "red"], ["Clump ID", "red"]],
+    out: [["U", "red", "1000"], ["V", "green", "0100"], ["Length", "red", "1000"], ["Radius", "green", "0100"], ["Seed", "red", "1000"], ["Tangent", "", "1110"], ["Root UV", "", "1100"], ["BaseColor", "", "1110"], ["Roughness", "red", "1000"], ["Depth", "red", "1000"], ["Coverage", "red", "1000"], ["AuxilaryData", "rgba", "1111"], ["AtlasUVs", "", "1100"], ["Group Index", "red", "1000"], ["AO", "red", "1000"], ["Clump ID", "red", "1000"]],
   },
   HairColor: {
     in: [["Melanin"], ["Redness"], ["DyeColor"]],
-    out: [["Color", ""]],
+    out: [["Color", "", "1110"]],
   },
   HsvToRgb: {
     in: [["Input"]],
@@ -415,7 +415,7 @@ export const UE_EXPRESSIONS = {
   },
   LightmapUVs: {
     in: [],
-    out: [["Output", ""]],
+    out: [["Output", "", "1100"]],
   },
   LightmassReplace: {
     in: [["Realtime"], ["Lightmass"]],
@@ -431,7 +431,7 @@ export const UE_EXPRESSIONS = {
   },
   LocalPosition: {
     in: [],
-    out: [["XYZ", ""], ["XY", ""], ["Z", "blue"]],
+    out: [["XYZ", "", "1110"], ["XY", "", "1100"], ["Z", "blue", "0010"]],
   },
   Logarithm: {
     in: [["Input"]],
@@ -523,7 +523,7 @@ export const UE_EXPRESSIONS = {
   },
   NeuralNetworkOutput: {
     in: [["UVs", "Coordinates"]],
-    out: [["RGBA", "rgba"]],
+    out: [["RGBA", "rgba", "1111"]],
   },
   Noise: {
     in: [["Position"], ["FilterWidth"]],
@@ -539,7 +539,7 @@ export const UE_EXPRESSIONS = {
   },
   ObjectLocalBounds: {
     in: [],
-    out: [["Half Extents", ""], ["Extents", ""], ["Min", ""], ["Max", ""]],
+    out: [["Half Extents", "", "1110"], ["Extents", "", "1110"], ["Min", "", "1110"], ["Max", "", "1110"]],
   },
   ObjectOrientation: {
     in: [],
@@ -571,7 +571,7 @@ export const UE_EXPRESSIONS = {
   },
   ParticleColor: {
     in: [],
-    out: [["RGB", ""], ["R", "red"], ["G", "green"], ["B", "blue"], ["A", "alpha"], ["RGBA", "rgba"]],
+    out: [["RGB", "", "1110"], ["R", "red", "1000"], ["G", "green", "0100"], ["B", "blue", "0010"], ["A", "alpha", "0001"], ["RGBA", "rgba", "1111"]],
   },
   ParticleDirection: {
     in: [],
@@ -619,11 +619,11 @@ export const UE_EXPRESSIONS = {
   },
   ParticleSubUVProperties: {
     in: [],
-    out: [["TextureCoordinate0", ""], ["TextureCoordinate1", ""], ["Blend"]],
+    out: [["TextureCoordinate0", "", "1100"], ["TextureCoordinate1", "", "1100"], ["Blend"]],
   },
   PathTracingBufferTexture: {
     in: [["UVs", "Coordinates"]],
-    out: [["RGBA", "rgba"], ["RGB", ""], ["A", "alpha"]],
+    out: [["RGBA", "rgba", "1111"], ["RGB", "", "1110"], ["A", "alpha", "0001"]],
   },
   PathTracingQualitySwitch: {
     in: [["Normal"], ["PathTraced"]],
@@ -651,7 +651,7 @@ export const UE_EXPRESSIONS = {
   },
   PixelDepth: {
     in: [],
-    out: [["Output", "red"]],
+    out: [["Output", "red", "1000"]],
   },
   PixelNormalWS: {
     in: [],
@@ -671,15 +671,15 @@ export const UE_EXPRESSIONS = {
   },
   PreSkinnedLocalBounds: {
     in: [],
-    out: [["Half Extents", ""], ["Extents", ""], ["Min", ""], ["Max", ""]],
+    out: [["Half Extents", "", "1110"], ["Extents", "", "1110"], ["Min", "", "1110"], ["Max", "", "1110"]],
   },
   PreSkinnedNormal: {
     in: [],
-    out: [["Output", ""]],
+    out: [["Output", "", "1110"]],
   },
   PreSkinnedPosition: {
     in: [],
-    out: [["Output", ""]],
+    out: [["Output", "", "1110"]],
   },
   PreviousFrameSwitch: {
     in: [["CurrentFrame"], ["PreviousFrame"]],
@@ -775,15 +775,15 @@ export const UE_EXPRESSIONS = {
   },
   SceneColor: {
     in: [["Input"], ["OffsetFraction_DEPRECATED"]],
-    out: [["RGB", ""], ["A", "alpha"]], renames: true,
+    out: [["RGB", "", "1110"], ["A", "alpha", "0001"]], renames: true,
   },
   SceneDepth: {
     in: [["Input"], ["Coordinates_DEPRECATED"]],
-    out: [["Output", "red"]], renames: true,
+    out: [["Output", "red", "1000"]], renames: true,
   },
   SceneDepthWithoutWater: {
     in: [["Input"]],
-    out: [["Output", "red"]], renames: true,
+    out: [["Output", "red", "1000"]], renames: true,
   },
   SceneTexelSize: {
     in: [],
@@ -791,7 +791,7 @@ export const UE_EXPRESSIONS = {
   },
   SceneTexture: {
     in: [["UVs", "Coordinates"]],
-    out: [["Color", "rgba"], ["Size"], ["InvSize"]],
+    out: [["Color", "rgba", "1111"], ["Size"], ["InvSize"]],
   },
   ScreenPosition: {
     in: [],
@@ -879,7 +879,7 @@ export const UE_EXPRESSIONS = {
   },
   SparseVolumeTextureSample: {
     in: [["UVs", "Coordinates"], ["Tex", "TextureObject"], ["MipValue"], ["CoordinatesDX"], ["CoordinatesDY"]],
-    out: [["Attributes A", "rgba"], ["Attributes B", "rgba"]], renames: true,
+    out: [["Attributes A", "rgba", "1111"], ["Attributes B", "rgba", "1111"]], renames: true,
   },
   SparseVolumeTextureSampleParameter: {
     in: [],
@@ -987,7 +987,7 @@ export const UE_EXPRESSIONS = {
   },
   TextureSample: {
     in: [["UVs", "Coordinates"], ["Tex", "TextureObject"], ["MipValue"], ["CoordinatesDX"], ["CoordinatesDY"], ["AutomaticViewMipBiasValue"]],
-    out: [["RGB", ""], ["R", "red"], ["G", "green"], ["B", "blue"], ["A", "alpha"], ["RGBA", "rgba"]], renames: true,
+    out: [["RGB", "", "1110"], ["R", "red", "1000"], ["G", "green", "0100"], ["B", "blue", "0010"], ["A", "alpha", "0001"], ["RGBA", "rgba", "1111"]], renames: true,
   },
   TextureSampleParameter2D: {
     in: [],
@@ -1047,7 +1047,7 @@ export const UE_EXPRESSIONS = {
   },
   UserSceneTexture: {
     in: [["UVs", "Coordinates"]],
-    out: [["Color", "rgba"], ["Size"], ["InvSize"]],
+    out: [["Color", "rgba", "1111"], ["Size"], ["InvSize"]],
   },
   VectorNoise: {
     in: [["Position"]],
@@ -1055,11 +1055,11 @@ export const UE_EXPRESSIONS = {
   },
   VectorParameter: {
     in: [],
-    out: [["RGB", ""], ["R", "red"], ["G", "green"], ["B", "blue"], ["A", "alpha"], ["RGBA", "rgba"]],
+    out: [["RGB", "", "1110"], ["R", "red", "1000"], ["G", "green", "0100"], ["B", "blue", "0010"], ["A", "alpha", "0001"], ["RGBA", "rgba", "1111"]],
   },
   VertexColor: {
     in: [],
-    out: [["Output", ""], ["Output2", "red"], ["Output3", "green"], ["Output4", "blue"], ["Output5", "alpha"]],
+    out: [["Output", "", "1110"], ["Output2", "red", "1000"], ["Output3", "green", "0100"], ["Output4", "blue", "0010"], ["Output5", "alpha", "0001"]],
   },
   VertexInterpolator: {
     in: [["Input"]],
@@ -1103,7 +1103,7 @@ export const UE_EXPRESSIONS = {
   },
   WorldPosition: {
     in: [],
-    out: [["XYZ", ""], ["XY", ""], ["Z", "blue"]],
+    out: [["XYZ", "", "1110"], ["XY", "", "1100"], ["Z", "blue", "0010"]],
   },
 };
 

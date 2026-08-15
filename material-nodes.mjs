@@ -101,8 +101,12 @@ const build = () => {
     nodes[short] = {
       expression: `MaterialExpression${short}`,
       in: [...(values?.pins ?? []), ...wired, ...(tweak.append ?? [])],
-      // [pinName] is an unmasked output; [pinName, channel] carries PinCategory="mask".
-      out: api.out.map(([name, sub]) => (sub === undefined ? [name, "", { plain: true }] : [name, sub])),
+      // [pinName] is an unmasked output; [pinName, channel, bits] carries PinCategory="mask",
+      // and the bits travel onto the wire as Mask/MaskR..A — which is what actually swizzles
+      // the value. The channel name alone cannot do it: RGB has no name and reads as "".
+      out: api.out.map(([name, sub, mask]) => (
+        sub === undefined ? [name, "", { plain: true }] : [name, sub, mask ? { mask } : {}]
+      )),
       ...(values?.pinDefaults ? { pinDefaults: values.pinDefaults } : {}),
       ...(tweak.node ? { node: tweak.node } : {}),
       ...(api.renames ? { pinNamesVary: true } : {}),

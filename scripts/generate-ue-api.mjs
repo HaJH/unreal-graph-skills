@@ -68,9 +68,13 @@ for (const ctor of expressions.matchAll(/U(MaterialExpression\w+)::U\1\s*\(([\s\
   for (const o of ctor[2].matchAll(/Outputs\.Add\(FExpressionOutput\(TEXT\("([^"]*)"\)((?:\s*,\s*\d+)*)\)\)/g)) {
     const bits = o[2].split(",").map((n) => n.trim()).filter(Boolean);
     const masked = bits.length >= 5 && bits[0] === "1";
+    // The channel bits are what a wire actually carries. The pin sub-category only colours the
+    // pin and collapses everything it has no name for — RGB (1110) reads as "" there, exactly
+    // like an unmasked output — so the raw bits are kept separately for the wire to write.
     outs.push({
       name: shows ? o[1] : "",
       sub: masked ? (CHANNEL[bits.slice(1, 5).join("")] ?? "") : null,
+      mask: masked ? bits.slice(1, 5).join("") : null,
     });
   }
   if (outs.length) entry.outputs = outs;
@@ -127,9 +131,9 @@ const body = shipped.map(([name, c]) => {
     const label = remap[prop] ?? prop;
     return label === prop ? `["${prop}"]` : `["${label}", "${prop}"]`;
   });
-  const outputs = (c.outputs ?? [{ name: "", sub: null }]).map((o, i) => {
+  const outputs = (c.outputs ?? [{ name: "", sub: null, mask: null }]).map((o, i) => {
     const pin = o.name || (i === 0 ? "Output" : `Output${i + 1}`);
-    return o.sub === null ? `["${pin}"]` : `["${pin}", "${o.sub}"]`;
+    return o.sub === null ? `["${pin}"]` : `["${pin}", "${o.sub}", "${o.mask}"]`;
   });
   const flag = c.renamesPins ? ", renames: true" : "";
   return `  ${name.replace("MaterialExpression", "")}: {\n`
