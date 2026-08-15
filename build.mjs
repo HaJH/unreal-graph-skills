@@ -26,6 +26,7 @@ const outPath = outArg
 const spec = (await import(pathToFileURL(specPath).href)).default;
 
 // Literal replacement — avoids $& / $1 expansion in String.replace patterns.
+const putAll = (haystack, needle, value) => haystack.split(needle).join(value);
 const put = (haystack, needle, value) => {
   const at = haystack.indexOf(needle);
   if (at < 0) throw new Error(`placeholder not found: ${needle}`);
@@ -41,6 +42,8 @@ if (external) throw new Error(`renderer css would be CSP-blocked: ${external[0]}
 const t3d = emitT3D(spec);
 
 let html = read("page.template.html");
+// A flat, wide chain wastes a tall frame; a spec can ask for a shorter one.
+html = putAll(html, "__PANEL_HEIGHT__", `${spec.height ?? 560}px`);
 html = put(html, "__TITLE__", esc(spec.title ?? spec.material ?? "Material Graph"));
 html = put(html, "__EYEBROW__", esc(spec.eyebrow ?? "Unreal material graph"));
 html = put(html, "__HEADING__", esc(spec.title ?? spec.material ?? "Material Graph"));

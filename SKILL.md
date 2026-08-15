@@ -31,6 +31,8 @@ export default {
   material: "M_HB_ShieldPulse",     // names the output node; also the T3D transient path
   title: "Shield Pulse",            // page heading  (optional, defaults to `material`)
   summary: "One line on what it does.",  // optional
+  height: 400,                      // graph frame height, default 560 — drop it for a
+                                    // flat, wide chain so the nodes are not scaled away
   nodes: [
     { id: "uv", type: "TextureCoordinate", props: { UTiling: "3.000000" } },
 
@@ -120,6 +122,7 @@ entry.
 | `page.template.html` | page shell; graph panel stays in the engine's dark palette |
 | `vendor/` | bue-render (MIT, from blueprintue-self-hosted-edition) |
 | `reference/` | `ENCODING.md` — the T3D format; `survey.mjs` — read a shape off a real copy |
+| `examples/` | working specs; `docs/preview.png` is a headless-Chrome shot of the first |
 
 Everything is inlined at build time because the Artifact CSP blocks every external host.
 `build.mjs` refuses to build if the vendored CSS ever gains a non-`data:` `url()`.

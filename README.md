@@ -8,8 +8,13 @@ node network: pin-by-pin prose is slow to read and easy to get wrong. This turns
 spec into the same text Unreal writes when you copy nodes, renders it with blueprintue.com's
 own renderer, and produces one self-contained HTML file.
 
+![A cooldown sweep material rendered as an Unreal node graph: TextureCoordinate through a polar-angle chain into the material output](docs/preview.png)
+
+<sub>The real page pans, zooms and goes fullscreen — this is a still of
+[`examples/cooldown-sweep.spec.mjs`](examples/cooldown-sweep.spec.mjs).</sub>
+
 ```js
-// cooldown.spec.mjs
+// examples/cooldown-sweep.spec.mjs, abridged
 export default {
   material: "M_UI_CooldownSweep",
   title: "Cooldown Sweep",
@@ -66,6 +71,9 @@ wrong. The emitter refuses to emit when the two drift.
 Positions are optional. Nodes are layered by distance to the output, so constants and
 parameters land directly in front of whatever consumes them, and rows relax toward each node's
 neighbours. Set `x`/`y` on a node to pin it.
+
+`title`, `summary` and `height` are optional page settings — a flat, wide chain reads better
+in a shorter frame than the 560px default.
 
 Unknown node types, wires to nodes that do not exist, and pin names a node does not have all
 fail the build.

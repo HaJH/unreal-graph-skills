@@ -76,7 +76,7 @@ h1{
   border:1px solid var(--line);border-radius:10px;overflow:hidden;
   background:#262626;box-shadow:var(--shadow);
 }
-.playground{min-height:560px}
+.playground{min-height:__PANEL_HEIGHT__}
 
 .src-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
 h2{font-family:var(--font-display);font-size:22px;letter-spacing:-.005em;margin:0}
@@ -141,7 +141,7 @@ __BUE_JS__
 new window.blueprintUE.render.Main(
   document.getElementById("graph-source").value,
   document.querySelector(".playground"),
-  { height: "560px" }
+  { height: "__PANEL_HEIGHT__" }
 ).start();
 
 // The renderer opens at 1:1 with the graph pinned to the top-left, so anything wider than
