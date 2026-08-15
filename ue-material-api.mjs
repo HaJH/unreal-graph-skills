@@ -6,7 +6,7 @@
 // override varies with its own settings, so its labels can shift — check those against a real
 // copy with reference/survey.mjs before relying on them.
 //
-// 257 expressions.
+// 274 expressions.
 
 export const UE_EXPRESSIONS = {
   Abs: {
@@ -26,7 +26,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   Aggregate: {
-    in: [["Input"], ["PrototypeInput"]],
+    in: [["PrototypeInput"]],
     out: [["Output"]], renames: true,
   },
   AntialiasedTextureMask: {
@@ -94,7 +94,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   BlendMaterialAttributes: {
-    in: [["Alpha"], ["VertexAttribute_UseA"], ["VertexAttribute_UseB"], ["PixelAttribute_UseA"], ["PixelAttribute_UseB"]],
+    in: [["Alpha"]],
     out: [["Output"]], renames: true,
   },
   Bounds: {
@@ -169,8 +169,12 @@ export const UE_EXPRESSIONS = {
     in: [["Input"]],
     out: [["Output"]],
   },
+  ConstantDouble: {
+    in: [],
+    out: [["Output"]],
+  },
   Convert: {
-    in: [["ExpressionInput"]],
+    in: [],
     out: [["Output"]],
   },
   Cosine: {
@@ -186,7 +190,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output", ""], ["Output2", "red"], ["Output3", "green"], ["Output4", "blue"], ["Output5", "alpha"]], renames: true,
   },
   Custom: {
-    in: [["Input"]],
+    in: [],
     out: [["Output"]], renames: true,
   },
   DataDrivenShaderPlatformInfoSwitch: {
@@ -281,16 +285,24 @@ export const UE_EXPRESSIONS = {
     in: [],
     out: [["Output", "red"], ["Output2", "green"], ["Output3", "blue"], ["Output4", "alpha"], ["RGB", ""], ["RGBA", "rgba"]],
   },
+  EvalPhysicsIntegerField: {
+    in: [],
+    out: [["Output"]],
+  },
+  EvalPhysicsScalarField: {
+    in: [],
+    out: [["Output"]],
+  },
+  EvalPhysicsVectorField: {
+    in: [],
+    out: [["Output"]],
+  },
   Exponential: {
     in: [["Input"]],
     out: [["Output"]],
   },
   Exponential2: {
     in: [["Input"]],
-    out: [["Output"]],
-  },
-  ExternalCodeBase: {
-    in: [],
     out: [["Output"]],
   },
   EyeAdaptation: {
@@ -310,7 +322,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   FloatToUInt: {
-    in: [["Input"], ["Input"]],
+    in: [["Input"]],
     out: [["Output"]],
   },
   Floor: {
@@ -341,9 +353,13 @@ export const UE_EXPRESSIONS = {
     in: [["ExponentIn"], ["BaseReflectFractionIn"], ["Normal"]],
     out: [["Output"]],
   },
-  GenericConstant: {
-    in: [],
+  FunctionInput: {
+    in: [["Preview"]],
     out: [["Output"]],
+  },
+  FunctionOutput: {
+    in: [["A"]],
+    out: [["Output"]], renames: true,
   },
   GetMaterialAttributes: {
     in: [],
@@ -388,6 +404,10 @@ export const UE_EXPRESSIONS = {
   LayerStack: {
     in: [],
     out: [["Output"]], renames: true,
+  },
+  LegacyBlendMaterialAttributes: {
+    in: [["VertexAttribute_UseA"], ["VertexAttribute_UseB"], ["PixelAttribute_UseA"], ["PixelAttribute_UseB"]],
+    out: [["Output"]],
   },
   Length: {
     in: [["Input"]],
@@ -442,7 +462,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]], renames: true,
   },
   MaterialCache: {
-    in: [["Input"], ["Primitive"], ["UV"]],
+    in: [["Primitive"], ["UV"]],
     out: [["Output"]], renames: true,
   },
   MaterialLayerOutput: {
@@ -485,8 +505,12 @@ export const UE_EXPRESSIONS = {
     in: [["A"], ["B"]],
     out: [["Output"]],
   },
-  NamedRerouteBase: {
+  NamedRerouteDeclaration: {
     in: [["Input"]],
+    out: [["Output"]],
+  },
+  NamedRerouteUsage: {
+    in: [],
     out: [["Output"]],
   },
   NaniteReplace: {
@@ -494,8 +518,12 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   NeuralNetworkInput: {
-    in: [["UVs", "Coordinates"], ["Input0"], ["Mask"], ["UVs", "Coordinates"]],
+    in: [["UVs", "Coordinates"], ["Input0"], ["Mask"]],
     out: [["Output"]],
+  },
+  NeuralNetworkOutput: {
+    in: [["UVs", "Coordinates"]],
+    out: [["RGBA", "rgba"]],
   },
   Noise: {
     in: [["Position"], ["FilterWidth"]],
@@ -530,7 +558,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   Operator: {
-    in: [["ExpressionInput"]],
+    in: [],
     out: [["Output"]], renames: true,
   },
   Panner: {
@@ -606,7 +634,11 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   PerInstanceCustomData: {
-    in: [["DefaultValue"], ["DefaultValue"]],
+    in: [["DefaultValue"]],
+    out: [["Output"]],
+  },
+  PerInstanceCustomData3Vector: {
+    in: [["DefaultValue"]],
     out: [["Output"]],
   },
   PerInstanceFadeAmount: {
@@ -677,8 +709,8 @@ export const UE_EXPRESSIONS = {
     in: [["InputTrue"], ["InputFalse"]],
     out: [["Output"]], renames: true,
   },
-  RerouteBase: {
-    in: [],
+  Reroute: {
+    in: [["Input"]],
     out: [["Output"]],
   },
   RgbToHsv: {
@@ -717,12 +749,24 @@ export const UE_EXPRESSIONS = {
     in: [],
     out: [["Output"]],
   },
+  SamplePhysicsIntegerField: {
+    in: [["WorldPosition"]],
+    out: [["Output"]], renames: true,
+  },
+  SamplePhysicsScalarField: {
+    in: [["WorldPosition"]],
+    out: [["Output"]], renames: true,
+  },
   SamplePhysicsVectorField: {
-    in: [["WorldPosition"], ["WorldPosition"], ["WorldPosition"]],
+    in: [["WorldPosition"]],
     out: [["Output"]], renames: true,
   },
   Saturate: {
     in: [["Input"]],
+    out: [["Output"]],
+  },
+  ScalarBlueNoise: {
+    in: [],
     out: [["Output"]],
   },
   ScalarParameter: {
@@ -785,13 +829,29 @@ export const UE_EXPRESSIONS = {
     in: [["ScatteringCoefficients"], ["AbsorptionCoefficients"], ["PhaseG"], ["ColorScaleBehindWater"]],
     out: [["Output"]],
   },
+  SkyAtmosphereAerialPerspective: {
+    in: [["WorldPosition"]],
+    out: [["Output"]], renames: true,
+  },
+  SkyAtmosphereDistantLightScatteredLuminance: {
+    in: [],
+    out: [["Output"]],
+  },
   SkyAtmosphereLightDirection: {
     in: [],
     out: [["Output"]],
   },
+  SkyAtmosphereLightDiskLuminance: {
+    in: [["DiskAngularDiameterOverride"]],
+    out: [["Output"]],
+  },
   SkyAtmosphereLightIlluminance: {
-    in: [["WorldPosition"], ["DiskAngularDiameterOverride"], ["WorldPosition"]],
+    in: [["WorldPosition"]],
     out: [["Output"]], renames: true,
+  },
+  SkyAtmosphereLightIlluminanceOnGround: {
+    in: [],
+    out: [["Output"]],
   },
   SkyAtmosphereViewLuminance: {
     in: [["WorldDirection"]],
@@ -809,17 +869,21 @@ export const UE_EXPRESSIONS = {
     in: [["Cell"], ["Index"], ["Seed"]],
     out: [["Output"]],
   },
-  SparseVolumeTextureBase: {
+  SparseVolumeTextureObject: {
     in: [],
     out: [["Output"]],
   },
-  SparseVolumeTextureObject: {
+  SparseVolumeTextureObjectParameter: {
     in: [],
     out: [["Output"]],
   },
   SparseVolumeTextureSample: {
     in: [["UVs", "Coordinates"], ["Tex", "TextureObject"], ["MipValue"], ["CoordinatesDX"], ["CoordinatesDY"]],
     out: [["Attributes A", "rgba"], ["Attributes B", "rgba"]], renames: true,
+  },
+  SparseVolumeTextureSampleParameter: {
+    in: [],
+    out: [["Output"]],
   },
   SpeedTree: {
     in: [["GeometryInput"], ["WindInput"], ["LODInput"], ["ExtraBendWS"]],
@@ -874,7 +938,7 @@ export const UE_EXPRESSIONS = {
     out: [["Output"]],
   },
   Switch: {
-    in: [["Input"], ["SwitchValue"], ["Default"]],
+    in: [["SwitchValue"], ["Default"]],
     out: [["Output"]], renames: true,
   },
   Tangent: {
@@ -891,10 +955,6 @@ export const UE_EXPRESSIONS = {
   },
   TemporalSobol: {
     in: [["Index"], ["Seed"]],
-    out: [["Output"]],
-  },
-  TextureBase: {
-    in: [],
     out: [["Output"]],
   },
   TextureCollection: {
@@ -928,10 +988,6 @@ export const UE_EXPRESSIONS = {
   TextureSample: {
     in: [["UVs", "Coordinates"], ["Tex", "TextureObject"], ["MipValue"], ["CoordinatesDX"], ["CoordinatesDY"], ["AutomaticViewMipBiasValue"]],
     out: [["RGB", ""], ["R", "red"], ["G", "green"], ["B", "blue"], ["A", "alpha"], ["RGBA", "rgba"]], renames: true,
-  },
-  TextureSampleParameter: {
-    in: [],
-    out: [["Output"]],
   },
   TextureSampleParameter2D: {
     in: [],
@@ -985,6 +1041,10 @@ export const UE_EXPRESSIONS = {
     in: [],
     out: [["Output"]],
   },
+  UIntToFloat: {
+    in: [["Input"]],
+    out: [["Output"]],
+  },
   UserSceneTexture: {
     in: [["UVs", "Coordinates"]],
     out: [["Color", "rgba"], ["Size"], ["InvSize"]],
@@ -1030,7 +1090,15 @@ export const UE_EXPRESSIONS = {
     out: [["ConservativeDensity as Float3"], ["ConservativeDensity as Float4"]],
   },
   VolumetricAdvancedMaterialOutput: {
-    in: [["PhaseG"], ["PhaseG2"], ["PhaseBlend"], ["MultiScatteringContribution"], ["MultiScatteringOcclusion"], ["MultiScatteringEccentricity"], ["ConservativeDensity"], ["ContainsMatter"]],
+    in: [["PhaseG"], ["PhaseG2"], ["PhaseBlend"], ["MultiScatteringContribution"], ["MultiScatteringOcclusion"], ["MultiScatteringEccentricity"], ["ConservativeDensity"]],
+    out: [["Output"]],
+  },
+  VolumetricCloudEmptySpaceSkippingInput: {
+    in: [],
+    out: [["Sphere Center"], ["Sphere Radius"]],
+  },
+  VolumetricCloudEmptySpaceSkippingOutput: {
+    in: [["ContainsMatter"]],
     out: [["Output"]],
   },
   WorldPosition: {

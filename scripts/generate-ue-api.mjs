@@ -31,16 +31,28 @@ const read = (p) => readFileSync(join(engine, "Engine/Source", p), "utf8");
 
 // ---- inputs ----------------------------------------------------------------------
 const headerDir = join(engine, "Engine/Source/Runtime/Engine/Public/Materials");
+// A header can declare more than one expression — MaterialExpressionNamedReroute.h holds an
+// abstract base and the Declaration/Usage pair. Reading only the first class both loses the
+// rest and hands the survivor everyone's FExpressionInput members, so walk every UCLASS in the
+// file and cut each class body at the next one. The UCLASS options are matched lazily up to
+// the ")" that precedes `class`, because several carry a nested `meta=(...)` group.
+const CLASS_HEAD = /UCLASS\(([\s\S]*?)\)\s*class\s+(?:\w+_API\s+)?U(MaterialExpression\w+)\s*:/g;
 const classes = new Map();
 for (const file of readdirSync(headerDir).filter((f) => /^MaterialExpression.*\.h$/.test(f))) {
   const text = readFileSync(join(headerDir, file), "utf8");
-  const name = text.match(/class\s+(?:\w+_API\s+)?U(MaterialExpression\w+)\s*:/)?.[1];
-  if (!name) continue;
-  if (/Abstract/.test(text.match(/UCLASS\([^)]*\)/)?.[0] ?? "")) continue;
-  classes.set(name, {
-    inputs: [...text.matchAll(/^\s*FExpressionInput\s+(\w+)\s*;/gm)].map((m) => m[1]),
-    renamesPins: /GetInputName\s*\(/.test(text),
-    outputs: null,
+  const heads = [...text.matchAll(CLASS_HEAD)];
+  heads.forEach((head, i) => {
+    const [, options, name] = head;
+    // Unreal spells the specifier lowercase. Testing for /Abstract/ matched nothing, so every
+    // abstract base shipped as if it were a usable node — and a spec naming one emits T3D for
+    // a class that cannot be instantiated.
+    if (/\babstract\b/i.test(options)) return;
+    const body = text.slice(head.index, heads[i + 1]?.index ?? text.length);
+    classes.set(name, {
+      inputs: [...body.matchAll(/^\s*FExpressionInput\s+(\w+)\s*;/gm)].map((m) => m[1]),
+      renamesPins: /GetInputName\s*\(/.test(body),
+      outputs: null,
+    });
   });
 }
 
@@ -81,10 +93,28 @@ for (const branch of graphNode.matchAll(
 // Substrate/Strata slabs and the custom-output family are whole subsystems with their own
 // wiring rules; a caller reaching for one is not writing the kind of graph this table serves,
 // and carrying them would triple its size for nothing.
+//
+// Composites and their pin bases fold a subgraph rather than compute anything, and a comment
+// is a spec field here rather than a node. Reroutes are a different story and do ship: a plain
+// Reroute tidies a wire, and the NamedReroute pair is how a large graph stays readable at all
+// — a Declaration names a value once and a Usage picks it up anywhere with no wire between.
+//
+// MaterialFunctionCall is the one exclusion that is about wiring rather than relevance, and
+// it stays out of the *generated* table on purpose: its pins come from whichever function it
+// points at, and each wire is kept alive by `FunctionInputs(i).ExpressionInputId` matching
+// the Id of a FunctionInput expression inside that asset. UpdateFromFunctionResource matches
+// on that Guid alone (FindInputById -- there is no fall back to the name), and
+// UMaterialExpressionFunctionInput::PostEditImport force-regenerates the Id on paste, so the
+// number cannot be agreed in advance: it has to be read back off the built function. That is
+// overlay work in material-nodes.mjs, not something a header scrape can express.
+//
+// FunctionInput/FunctionOutput used to be lumped in with the plumbing, which was wrong. They
+// are ordinary expressions -- one Preview input, and plain properties for name, type and
+// preview value -- so they scrape like anything else and let a spec emit a function's body.
 const skip = (name) =>
   /Substrate|Strata/.test(name)
   || /CustomOutput$/.test(name)
-  || /^MaterialExpression(Comment|Composite|PinBase|Reroute|NamedReroute|ExecBegin|ExecEnd|MaterialFunctionCall|FunctionInput|FunctionOutput)$/.test(name);
+  || /^MaterialExpression(Comment|Composite|PinBase|ExecBegin|ExecEnd|MaterialFunctionCall)$/.test(name);
 
 // Everything that survives the skip list ships, including the pure sources — a node with
 // neither inputs nor custom outputs is not a useless one, it is TextureCoordinate.

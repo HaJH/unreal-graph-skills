@@ -138,6 +138,40 @@ NODES.MaterialOutputUI = {
   in: [["Final Color", {}], ["Opacity", {}], ["Opacity Mask", {}]],
 };
 
+// ---- named reroutes -----------------------------------------------------------------
+// The readability tool a big graph lives on: a Declaration names a value once, and a Usage
+// picks it up anywhere with no wire drawn between them. The two halves find each other by
+// Guid, which is why they need an overlay — the spec names the variable and both ends derive
+// the same Guid from that name.
+//
+//   { id: "pulseDecl", type: "NamedRerouteDeclaration", name: "Pulse", in: { Input: "sine" } }
+//   { id: "pulseA",    type: "NamedRerouteUsage",       of: "Pulse" }
+//
+// Pasting is safe in both directions. UMaterialExpressionNamedRerouteUsage::PostCopyNode looks
+// for its declaration among the pasted expressions first and falls back to the material, and
+// the Declaration only regenerates its Guid when one already exists in the target material —
+// in which case it rewrites the pasted usages to match. Unlike FunctionInput, nothing is
+// force-regenerated behind our back.
+const named = (short, build) => {
+  const generated = NODES[short];
+  if (generated) NODES[short] = { ...generated, buildProps: build };
+};
+
+named("NamedRerouteDeclaration", (node, wiredOf, ctx) => {
+  const source = wiredOf("Input");
+  return [
+    ...(source ? [`Input=(${source.ref})`] : []),
+    `Name="${node.name}"`,
+    `VariableGuid=${ctx.guid(`reroute/${node.name}`)}`,
+    // The declaration's colour carries to every usage, which is what makes it a legend.
+    ...(node.color ? [`NodeColor=${node.color}`] : []),
+  ];
+});
+
+named("NamedRerouteUsage", (node, _wiredOf, ctx) => [
+  `DeclarationGuid=${ctx.guid(`reroute/${node.of}`)}`,
+]);
+
 // ---- inline HLSL --------------------------------------------------------------------
 // The one expression whose pins are not fixed by its class, so the generated entry (a single
 // pin called "Input") cannot describe it: a Custom node carries an *array* of named inputs.
@@ -162,7 +196,7 @@ NODES.Custom = {
     ...(node.inputs ?? []).map((name, i) => {
       const source = wiredOf(name);
       return source
-        ? `Inputs(${i})=(InputName="${name}",Input=(Expression=/Script/Engine.${source.expression}'"${source.name}"'))`
+        ? `Inputs(${i})=(InputName="${name}",Input=(${source.ref}))`
         : `Inputs(${i})=(InputName="${name}")`;
     }),
   ],

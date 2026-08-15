@@ -62,7 +62,7 @@ export default {
 
 ## Available node types
 
-**257 expressions, generated from the engine.** `ue-material-api.mjs` is produced by
+**274 expressions, generated from the engine.** `ue-material-api.mjs` is produced by
 `scripts/generate-ue-api.mjs` reading an installed Unreal, so every pin name, pin order and
 output shape is the engine's own rather than a guess. Use the Unreal class name without the
 `MaterialExpression` prefix — `Multiply`, `TextureSample`, `Fresnel`, `Panner`,
@@ -88,9 +88,35 @@ The declared order is the pin order, each name must be a valid HLSL identifier, 
 say the thing plainly and a dozen maths nodes would not — a signed distance field, say. See
 `examples/ui-rounded-rect.spec.mjs`.
 
-Not included: Substrate/Strata slabs, the custom-output family, and structural nodes
-(comments, reroutes, composites, function in/out) — separate subsystems with their own wiring
-rules.
+**Named reroutes** are how a large graph stays readable: a declaration names a value once, and
+a usage picks it up anywhere with no wire drawn between them. Both ends derive their Guid from
+the name, so the spec only states it.
+
+```js
+{ id: "pulseDecl", type: "NamedRerouteDeclaration", name: "Pulse", in: { Input: "sine" } },
+{ id: "pulseA",    type: "NamedRerouteUsage",       of: "Pulse" },
+{ id: "mul",       type: "Multiply", in: { A: "mask", B: "pulseA" } },
+```
+
+Pasting is safe in both directions — a usage looks for its declaration among the pasted
+expressions first and falls back to the material, and a declaration only regenerates its Guid
+when the target material already has that one, rewriting the pasted usages to match. Give a
+declaration `color: "(R=..,G=..,B=..,A=1.000000)"` and every usage of it picks up the colour,
+which turns the set into a legend. A plain `Reroute` (just `Input`) is there too, for tidying
+a single wire.
+
+A declaration terminates its chain, so auto-layout parks it in the last column; pin `x`/`y` on
+declarations when the drawing matters.
+
+Not included: Substrate/Strata slabs, the custom-output family, composites and their pin
+bases, and `MaterialFunctionCall`. The function call is the interesting exclusion — its pins
+come from whichever function it points at, and each wire survives only while
+`FunctionInputs(i).ExpressionInputId` matches the Id of a `FunctionInput` expression inside
+that asset. `UpdateFromFunctionResource` matches on that Guid alone, with no fall back to the
+name, and `UMaterialExpressionFunctionInput::PostEditImport` force-regenerates the Id on
+paste — so the number cannot be agreed in advance. Emitting a call means reading the Ids back
+off the built function first. `FunctionInput`/`FunctionOutput` themselves are ordinary
+expressions and do ship, so a spec can emit a function's *body*.
 
 **Regenerating:** `node scripts/generate-ue-api.mjs <engine root>`. Run it when moving to a
 new engine version; pin names do change between versions.

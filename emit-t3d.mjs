@@ -128,7 +128,14 @@ export function emitT3D(spec) {
       if (!output) throw new Error(`"${fromId}" has no output named "${fromPin}"`);
       const input = pinsOf(node).find(([name]) => name === pinName);
       if (!input) throw new Error(`"${node.type}" has no input pin named "${pinName}"`);
-      links.push({ from: { id: fromId, pin: output[0] }, to: { id: node.id, pin: pinName } });
+      // Which output was tapped has to travel on the expression property as well as the pin.
+      // The pin's LinkedTo is what the renderer draws, but Unreal reads FExpressionInput on
+      // paste, and its OutputIndex defaults to 0 — so a `.G` tap that is only recorded on the
+      // pin draws correctly and pastes in reading the first output instead.
+      links.push({
+        from: { id: fromId, pin: output[0], outputIndex: outputs.indexOf(output) },
+        to: { id: node.id, pin: pinName },
+      });
     }
   }
 
@@ -201,24 +208,31 @@ export function emitT3D(spec) {
     const path = `${transient}:MaterialGraph_0.${nodeName(node)}.${exprName(node)}`;
     const ref = `/Script/Engine.${expr}'"${path}"'`;
 
-    // What is wired into a named pin, as the pieces a property reference needs.
+    // What is wired into a named pin, as the pieces a property reference needs. `ref` is the
+    // whole FExpressionInput body, so every caller carries the tapped output with it.
     const wiredOf = (name) => {
       const link = links.find((l) => l.to.id === node.id && l.to.pin === name);
       if (!link) return null;
       const source = byId.get(link.from.id);
-      return { expression: NODES[source.type].expression, name: exprName(source) };
+      const expression = NODES[source.type].expression;
+      return {
+        expression,
+        name: exprName(source),
+        outputIndex: link.from.outputIndex,
+        ref: `Expression=/Script/Engine.${expression}'"${exprName(source)}"',OutputIndex=${link.from.outputIndex}`,
+      };
     };
 
     // Wired inputs become expression properties referencing the upstream expression. A node
     // whose inputs live in an array rather than in one property each (Custom) builds its own.
+    // `ctx.guid` seeds off the material, so a node type that has to agree with another node on
+    // a Guid — the named reroute pair — can derive both ends from a name the spec already has.
     const wiredProps = def.buildProps
-      ? def.buildProps(node, wiredOf)
+      ? def.buildProps(node, wiredOf, { material, guid: (seed) => guid(`${material}/${seed}`) })
       : pinsOf(node).flatMap(([name, opts = {}]) => {
         if (!opts.prop) return [];
         const source = wiredOf(name);
-        return source
-          ? [`${opts.prop}=(Expression=/Script/Engine.${source.expression}'"${source.name}"')`]
-          : [];
+        return source ? [`${opts.prop}=(${source.ref})`] : [];
       });
     const literalProps = Object.entries(node.props ?? {}).map(([k, v]) => `${k}=${v}`);
 
@@ -244,15 +258,41 @@ export function emitT3D(spec) {
     ].join("\n");
   });
 
+  // A comment box is two objects, not one. The graph node is what gets drawn, but the box only
+  // survives because of the MaterialExpressionComment inside it: FMaterialEditor::PasteNodesHere
+  // adds that expression to the material's comment collection and skips the node entirely when
+  // it is missing, so a comment pasted without one is gone the next time the asset is opened —
+  // and deleting it meanwhile dereferences the null pointer and takes the editor with it.
   const comments = (spec.comments ?? []).map((c, i) => {
     const name = `MaterialGraphNode_Comment_${i + 1}`;
+    const expr = `MaterialExpressionComment_${i + 1}`;
+    const path = `${transient}:MaterialGraph_0.${name}.${expr}`;
+    const ref = `/Script/Engine.MaterialExpressionComment'"${path}"'`;
+    const x = c.x ?? 0;
+    const y = c.y ?? 0;
+    const w = c.w ?? 400;
+    const h = c.h ?? 200;
+    const color = c.color ?? "(R=1.000000,G=1.000000,B=1.000000,A=0.400000)";
     return [
       `Begin Object Class=/Script/UnrealEd.MaterialGraphNode_Comment Name="${name}" ExportPath=/Script/UnrealEd.MaterialGraphNode_Comment'"${transient}:MaterialGraph_0.${name}"'`,
-      `   NodePosX=${c.x ?? 0}`,
-      `   NodePosY=${c.y ?? 0}`,
-      `   NodeWidth=${c.w ?? 400}`,
-      `   NodeHeight=${c.h ?? 200}`,
-      `   CommentColor=${c.color ?? "(R=1.000000,G=1.000000,B=1.000000,A=0.400000)"}`,
+      `   Begin Object Class=/Script/Engine.MaterialExpressionComment Name="${expr}" ExportPath=${ref}`,
+      "   End Object",
+      `   Begin Object Name="${expr}" ExportPath=${ref}`,
+      `      SizeX=${w}`,
+      `      SizeY=${h}`,
+      `      Text="${c.text}"`,
+      `      CommentColor=${color}`,
+      `      MaterialExpressionEditorX=${x}`,
+      `      MaterialExpressionEditorY=${y}`,
+      `      MaterialExpressionGuid=${guid(`${material}/comment/${i}/expr`)}`,
+      `      Material=/Script/UnrealEd.PreviewMaterial'"${transient}"'`,
+      "   End Object",
+      `   MaterialExpressionComment=/Script/Engine.MaterialExpressionComment'"${expr}"'`,
+      `   NodePosX=${x}`,
+      `   NodePosY=${y}`,
+      `   NodeWidth=${w}`,
+      `   NodeHeight=${h}`,
+      `   CommentColor=${color}`,
       `   NodeComment="${c.text}"`,
       `   NodeGuid=${guid(`${material}/comment/${i}`)}`,
       "End Object",
