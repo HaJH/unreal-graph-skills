@@ -1,0 +1,6 @@
+# The vendored renderer is a published minified build, not source we maintain.
+vendor/bue-render.js   linguist-vendored
+vendor/bue-render.css  linguist-vendored
+
+* text=auto eol=lf
+*.woff2 binary

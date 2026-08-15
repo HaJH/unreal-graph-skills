@@ -1,0 +1,5 @@
+# Built pages and the specs that produce them are per-use, not part of the skill.
+*.html
+!page.template.html
+*.t3d
+node_modules/

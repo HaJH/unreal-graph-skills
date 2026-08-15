@@ -1,0 +1,209 @@
+<title>__TITLE__</title>
+
+<style>
+/* No bundled faces: the renderer asks for "Roboto, sans-serif" and hosts that have Roboto
+   (Android, ChromeOS, most Linux) still get it, while everyone else falls back cleanly. */
+
+/* Light is the bare :root; cool-biased neutrals to sit beside the editor grey. */
+:root{
+  --font-ui:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-display:"Roboto Condensed",Roboto,system-ui,-apple-system,"Segoe UI Semibold",sans-serif;
+  --ground:#f4f6f8;
+  --surface:#ffffff;
+  --ink:#151a22;
+  --ink-soft:#5b6673;
+  --line:#dee3ea;
+  --accent:#c25f16;
+  --accent-soft:#f3e3d6;
+  --code-ground:#eef1f5;
+  --shadow:0 1px 2px rgba(21,26,34,.06),0 8px 24px rgba(21,26,34,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0e1117;
+    --surface:#161b23;
+    --ink:#e6eaf0;
+    --ink-soft:#93a0b1;
+    --line:#252c37;
+    --accent:#f0913f;
+    --accent-soft:#2a1e14;
+    --code-ground:#11151c;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0e1117;
+  --surface:#161b23;
+  --ink:#e6eaf0;
+  --ink-soft:#93a0b1;
+  --line:#252c37;
+  --accent:#f0913f;
+  --accent-soft:#2a1e14;
+  --code-ground:#11151c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--font-ui);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:48px 24px 80px;display:flex;flex-direction:column;gap:32px}
+
+.eyebrow{
+  font-family:var(--font-display);
+  text-transform:uppercase;letter-spacing:.14em;font-size:12px;color:var(--accent);margin:0;
+}
+h1{
+  font-family:var(--font-display);
+  font-size:clamp(34px,5vw,52px);line-height:1.05;letter-spacing:-.01em;margin:10px 0 0;
+  text-wrap:balance;
+}
+.dek{margin:14px 0 0;max-width:62ch;color:var(--ink-soft);font-size:17px}
+.dek:empty{display:none}
+
+/* The graph panel stays in the engine's own dark world on purpose. A material chain is far
+   wider than it is tall, so let the panel break out of the reading column — every extra
+   pixel of width is a node that stays legible instead of being scaled away. */
+.panel{
+  width:min(94vw,1560px);
+  margin-left:calc(50% - min(47vw,780px));
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  background:#262626;box-shadow:var(--shadow);
+}
+.playground{min-height:560px}
+
+.src-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h2{font-family:var(--font-display);font-size:22px;letter-spacing:-.005em;margin:0}
+.sub{margin:6px 0 0;color:var(--ink-soft);font-size:15px;max-width:62ch}
+code{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:.92em}
+button{
+  font-family:var(--font-display);
+  text-transform:uppercase;letter-spacing:.1em;font-size:11.5px;
+  color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);
+  border-radius:5px;padding:8px 14px;cursor:pointer;
+}
+button:hover{background:var(--accent);color:var(--surface)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+pre{
+  margin:12px 0 0;background:var(--code-ground);border:1px solid var(--line);border-radius:8px;
+  padding:18px 20px;overflow-x:auto;max-height:320px;overflow-y:auto;
+  font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:12.5px;line-height:1.65;
+  color:var(--ink);tab-size:3;
+}
+.foot{color:var(--ink-soft);font-size:13.5px;border-top:1px solid var(--line);padding-top:20px}
+.foot a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<style>
+/* ---- bue-render, inlined verbatim (MIT); every asset inside it is already a data uri ---- */
+__BUE_CSS__
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">__EYEBROW__</p>
+    <h1>__HEADING__</h1>
+    <p class="dek">__DEK__</p>
+  </header>
+
+  <div class="panel">
+    <div class="playground"></div>
+  </div>
+
+  <section>
+    <div class="src-head">
+      <div>
+        <h2>Paste this into the Material Editor</h2>
+        <p class="sub">This is the text Unreal itself writes when you copy nodes. Select it and press Ctrl+C, then open a material and press Ctrl+V &mdash; the network arrives with its wiring and layout intact.</p>
+      </div>
+      <button id="copy" type="button">Select T3D</button>
+    </div>
+    <pre id="src">__T3D_ESCAPED__</pre>
+  </section>
+
+  <p class="foot">Rendered with <a href="https://github.com/blueprintue/blueprintue-self-hosted-edition">bue-render</a> (MIT), embedded in full &mdash; this page makes no network requests.</p>
+</div>
+
+<textarea id="graph-source" hidden>__T3D_TEXTAREA__</textarea>
+
+<script>
+__BUE_JS__
+</script>
+
+<script>
+new window.blueprintUE.render.Main(
+  document.getElementById("graph-source").value,
+  document.querySelector(".playground"),
+  { height: "560px" }
+).start();
+
+// The renderer opens at 1:1 with the graph pinned to the top-left, so anything wider than
+// the frame hangs off the edge. Scale the canvas to the node bounding box once on load;
+// the toolbar's own zoom and pan take over from there.
+function fitGraphToFrame() {
+  const root = document.querySelector(".bue-render");
+  const frame = root?.querySelector(".frame");
+  const canvas = root?.querySelector(".canvas");
+  const nodes = [...(root?.querySelectorAll(".node") ?? [])];
+  // Nodes are built asynchronously after start(), so report back and let the caller retry.
+  if (!frame || !canvas || !nodes.length || !frame.clientWidth) return false;
+
+  // Undo the current pan/zoom to recover canvas-space coordinates.
+  const m = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
+  const scale0 = m.a || 1;
+  const view = frame.getBoundingClientRect();
+  const rects = nodes.map((n) => n.getBoundingClientRect());
+  const toCanvas = (v, origin, offset) => (v - origin - offset) / scale0;
+  const box = {
+    l: Math.min(...rects.map((r) => toCanvas(r.left, view.left, m.e))),
+    t: Math.min(...rects.map((r) => toCanvas(r.top, view.top, m.f))),
+    r: Math.max(...rects.map((r) => toCanvas(r.right, view.left, m.e))),
+    b: Math.max(...rects.map((r) => toCanvas(r.bottom, view.top, m.f))),
+  };
+
+  // Wires bow outside the node boxes, so pad the bounds or the curves clip at the edges.
+  const pad = 70;
+  box.l -= pad; box.t -= pad; box.r += pad; box.b += pad;
+
+  const width = box.r - box.l, height = box.b - box.t;
+  if (!(width > 0 && height > 0)) return false;
+  const scale = Math.min(frame.clientWidth / width, frame.clientHeight / height, 1);
+  const x = (frame.clientWidth - width * scale) / 2 - box.l * scale;
+  const y = (frame.clientHeight - height * scale) / 2 - box.t * scale;
+  canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  return true;
+}
+
+let attempts = 0;
+const tryFit = () => { if (!fitGraphToFrame() && ++attempts < 60) setTimeout(tryFit, 50); };
+tryFit();
+addEventListener("resize", fitGraphToFrame);
+
+const btn = document.getElementById("copy");
+const src = document.getElementById("src");
+// navigator.clipboard is not an option here: the artifact viewer frames this page
+// cross-origin with no Permissions Policy delegation, so clipboard-write is never granted
+// and writeText() always rejects. Selecting the block is not permission-gated and always
+// works, so that is what the button promises; execCommand may also land, and when it does
+// the label upgrades itself.
+btn.addEventListener("click", () => {
+  const range = document.createRange();
+  range.selectNodeContents(src);
+  const selection = getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  let copied = false;
+  try { copied = document.execCommand("copy"); } catch { copied = false; }
+
+  btn.textContent = copied ? "Copied" : "Selected — press Ctrl+C";
+  setTimeout(() => { btn.textContent = "Select T3D"; }, 6000);
+});
+</script>
