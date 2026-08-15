@@ -74,6 +74,20 @@ Grep `ue-material-api.mjs` when unsure — each entry lists its pins verbatim.
 Output — `MaterialOutput` for a surface material, `MaterialOutputUI` for one whose domain is
 User Interface (Final Color / Opacity / Opacity Mask instead of the full lit set).
 
+`Custom` takes its own shape, because a Custom node's pins are declared per instance rather
+than fixed by its class. Name the inputs and the HLSL body sees those names:
+
+```js
+{ id: "sdf", type: "Custom", desc: "RoundedRectSDF", outputType: "CMOT_Float1",
+  inputs: ["UV", "Radius"], code: "float2 p = UV * 2.0 - 1.0;\n…",
+  in: { UV: "uv", Radius: "radius" } }
+```
+
+The declared order is the pin order, each name must be a valid HLSL identifier, and
+`outputType` is one of `CMOT_Float1` … `CMOT_Float4`. Reach for it when a few lines of HLSL
+say the thing plainly and a dozen maths nodes would not — a signed distance field, say. See
+`examples/ui-rounded-rect.spec.mjs`.
+
 Not included: Substrate/Strata slabs, the custom-output family, and structural nodes
 (comments, reroutes, composites, function in/out) — separate subsystems with their own wiring
 rules.

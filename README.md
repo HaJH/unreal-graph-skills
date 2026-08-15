@@ -96,9 +96,24 @@ Re-run it when moving engine version — pin names do change between them. Subst
 custom-output family and structural nodes are left out; they are separate subsystems with
 their own wiring rules.
 
+`Custom` is the one node with its own spec shape, since a Custom node declares its pins per
+instance rather than inheriting them from its class — name the inputs and the HLSL body sees
+those names. [`examples/ui-rounded-rect.spec.mjs`](examples/ui-rounded-rect.spec.mjs) uses it
+for a rounded-rectangle distance field.
+
 [`reference/ENCODING.md`](reference/ENCODING.md) documents the serialisation format, and
 `reference/survey.mjs` prints the pin encoding of any Material Editor copy — useful for the
 handful of nodes whose pin labels shift with their own settings.
+
+## Examples
+
+| | |
+|---|---|
+| [Cooldown Sweep](https://hajh.github.io/unreal-material-graph-skill/cooldown-sweep.html) | a clock wipe for skill icons, from the polar angle of the UV |
+| [Shield Pulse](https://hajh.github.io/unreal-material-graph-skill/shield-pulse.html) | a fresnel rim modulated by a panning noise sample |
+| [Dissolve with Burn Edge](https://hajh.github.io/unreal-material-graph-skill/dissolve-burn.html) | one subtraction driving both the clip mask and the glowing rim |
+| [Hologram Scanlines](https://hajh.github.io/unreal-material-graph-skill/hologram-scanline.html) | scrolling scanlines and a rim, with nothing sampled |
+| [Rounded Rectangle Mask](https://hajh.github.io/unreal-material-graph-skill/ui-rounded-rect.html) | a signed distance field in a `Custom` node |
 
 ## Known limits
 

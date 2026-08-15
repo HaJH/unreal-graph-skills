@@ -137,3 +137,42 @@ NODES.MaterialOutputUI = {
   root: true,
   in: [["Final Color", {}], ["Opacity", {}], ["Opacity Mask", {}]],
 };
+
+// ---- inline HLSL --------------------------------------------------------------------
+// The one expression whose pins are not fixed by its class, so the generated entry (a single
+// pin called "Input") cannot describe it: a Custom node carries an *array* of named inputs.
+// The spec declares them and the pin list follows. They also live in `Inputs(i)` rather than
+// in one property each, which is why the wiring is built here instead of by the default pass.
+//
+//   { id: "sdf", type: "Custom", desc: "RectSDF", outputType: "CMOT_Float4",
+//     inputs: ["UV", "Radius"], code: "return 0;", in: { UV: "uv", Radius: "radius" } }
+//
+// Each name is the HLSL parameter the code sees, so it must be a valid identifier, and the
+// declared order is the pin order. `desc` is the caption Unreal draws on the node; the
+// renderer still titles it "Custom".
+NODES.Custom = {
+  expression: "MaterialExpressionCustom",
+  pins: (node) => (node.inputs ?? []).map((name) => [name, {}]),
+  in: [],
+  out: [["Output", "", { plain: true }]],
+  buildProps: (node, wiredOf) => [
+    `Code="${t3dString(node.code ?? "return 0;")}"`,
+    `OutputType=${node.outputType ?? "CMOT_Float1"}`,
+    `Description="${node.desc ?? "Custom"}"`,
+    ...(node.inputs ?? []).map((name, i) => {
+      const source = wiredOf(name);
+      return source
+        ? `Inputs(${i})=(InputName="${name}",Input=(Expression=/Script/Engine.${source.expression}'"${source.name}"'))`
+        : `Inputs(${i})=(InputName="${name}")`;
+    }),
+  ],
+};
+
+// Unreal's string export escapes the backslash first, then the quotes, then the line breaks —
+// getting that order wrong turns a multi-line HLSL body into an unterminated property.
+function t3dString(s) {
+  return String(s)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r\n|\r|\n/g, "\\r\\n");
+}
