@@ -59,6 +59,13 @@ export default {
   property, never to restate the same number.
 - Positions are optional. Without them the emitter lays the graph out by dependency depth
   and relaxes rows toward each node's neighbours. Set `x`/`y` on a node to pin it.
+- `block: "Glow"` on a node puts it in a named block. Each block is laid out as its own
+  horizontal band, in the order the spec first mentions it, and **gets a comment box drawn
+  round it automatically** —
+  which is how a large graph reads as stages rather than as one field of nodes. Colour a box
+  with `blockColors: { Glow: "(R=..,G=..,B=..,A=0.400000)" }`. Nodes with no `block` share one
+  unnamed band and get no box, so existing specs are unaffected. `comments` is still there for
+  a box that is not a block, and takes explicit `x`/`y`/`w`/`h`.
 
 ## Available node types
 
@@ -101,22 +108,36 @@ the name, so the spec only states it.
 Pasting is safe in both directions — a usage looks for its declaration among the pasted
 expressions first and falls back to the material, and a declaration only regenerates its Guid
 when the target material already has that one, rewriting the pasted usages to match. Give a
-declaration `color: "(R=..,G=..,B=..,A=1.000000)"` and every usage of it picks up the colour,
-which turns the set into a legend. A plain `Reroute` (just `Input`) is there too, for tidying
-a single wire.
+declaration `color: "(R=..,G=..,B=..,A=1.000000)"` and every usage of it picks up the colour —
+worth setting when it helps you scan, and fine to leave off. A plain `Reroute` (just `Input`)
+is there too, for tidying a single wire.
 
 A declaration terminates its chain, so auto-layout parks it in the last column; pin `x`/`y` on
 declarations when the drawing matters.
 
-Not included: Substrate/Strata slabs, the custom-output family, composites and their pin
-bases, and `MaterialFunctionCall`. The function call is the interesting exclusion — its pins
-come from whichever function it points at, and each wire survives only while
-`FunctionInputs(i).ExpressionInputId` matches the Id of a `FunctionInput` expression inside
-that asset. `UpdateFromFunctionResource` matches on that Guid alone, with no fall back to the
-name, and `UMaterialExpressionFunctionInput::PostEditImport` force-regenerates the Id on
-paste — so the number cannot be agreed in advance. Emitting a call means reading the Ids back
-off the built function first. `FunctionInput`/`FunctionOutput` themselves are ordinary
-expressions and do ship, so a spec can emit a function's *body*.
+**Material functions** come in two halves. `FunctionInput`/`FunctionOutput` are ordinary
+expressions, so a spec emits a function's *body* like any other graph. Calling one needs
+`MaterialFunctionCall`, whose pins come from the asset it points at:
+
+```js
+{ id: "space", type: "MaterialFunctionCall",
+  function: "/Game/UI/MaterialFunctions/MF_UI_RectSpace",
+  inputs: [["UV", "8C1D…"], ["Offset", "A430…"]],
+  outputs: [["Centre", "77B2…"], ["Half", "0F19…"]],
+  in: { UV: "uv", Offset: "offset" } }
+```
+
+**Build the function before the caller.** Each wire into a call survives only while
+`FunctionInputs(i).ExpressionInputId` matches the Id of the corresponding `FunctionInput`
+inside that asset, `UpdateFromFunctionResource` matches on that Guid alone with no fall back
+to the name, and `UMaterialExpressionFunctionInput::PostEditImport` force-regenerates the Id
+whenever a body is pasted. So the Ids only exist once the function is built — read them back
+off it (`unreal.load_asset(...)`, then each `MaterialExpressionFunctionInput`'s `id`) and put
+them in the spec. An entry given as a bare name instead of a `[name, id]` pair still emits the
+right pin, just unconnected, which is a visible gap rather than a silent mis-wire.
+
+Not included: Substrate/Strata slabs, the custom-output family, and composites with their pin
+bases — subgraph plumbing with its own rules.
 
 **Regenerating:** `node scripts/generate-ue-api.mjs <engine root>`. Run it when moving to a
 new engine version; pin names do change between versions.

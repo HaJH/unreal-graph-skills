@@ -176,6 +176,56 @@ named("NamedRerouteUsage", (node, _wiredOf, ctx) => [
   `DeclarationGuid=${ctx.guid(`reroute/${node.of}`)}`,
 ]);
 
+// ---- calling a material function -----------------------------------------------------
+// Not generated, because its shape comes from the asset it points at rather than from its own
+// class: the pins are that function's inputs and outputs, and each wire survives only while
+// `FunctionInputs(i).ExpressionInputId` matches the Id of the FunctionInput expression inside
+// the asset. UpdateFromFunctionResource matches on the Guid alone — FindInputById, with no
+// fall back to the name — and UMaterialExpressionFunctionInput::PostEditImport regenerates
+// that Id whenever a function body is pasted. The Ids therefore cannot be agreed in advance:
+// build the function first, then read them back off the built asset.
+//
+//   { id: "space", type: "MaterialFunctionCall",
+//     function: "/Game/UI/MaterialFunctions/MF_UI_RectSpace",
+//     inputs: [["UV", "8C1D…"], ["Offset", "A430…"]],
+//     outputs: [["Centre", "77B2…"], ["Half", "0F19…"]],
+//     in: { UV: "uv", Offset: "offset" } }
+//
+// An entry may be a bare name while its Id is still unknown. The node then pastes with the
+// right pins and no connection on that input — a visible gap rather than a silent mis-wire.
+const pairs = (list) => (list ?? []).map((e) => (Array.isArray(e) ? e : [e, null]));
+
+NODES.MaterialFunctionCall = {
+  expression: "MaterialExpressionMaterialFunctionCall",
+  pins: (node) => pairs(node.inputs).map(([name]) => [name, {}]),
+  outs: (node) => {
+    const declared = pairs(node.outputs);
+    return declared.length
+      ? declared.map(([name]) => [name, "", { plain: true }])
+      : [["Output", "", { plain: true }]];
+  },
+  in: [],
+  out: [["Output", "", { plain: true }]],
+  buildProps: (node, wiredOf) => {
+    const asset = node.function ?? "";
+    const leaf = asset.split("/").pop();
+    return [
+      `MaterialFunction=/Script/Engine.MaterialFunction'"${asset}.${leaf}"'`,
+      ...pairs(node.inputs).map(([name, id], i) => {
+        const source = wiredOf(name);
+        const fields = [
+          ...(id ? [`ExpressionInputId=${id}`] : []),
+          `Input=(${source ? `${source.ref},` : ""}InputName="${name}")`,
+        ];
+        return `FunctionInputs(${i})=(${fields.join(",")})`;
+      }),
+      ...pairs(node.outputs).map(([name, id], i) =>
+        `FunctionOutputs(${i})=(${id ? `ExpressionOutputId=${id},` : ""}Output=(OutputName="${name}"))`),
+      ...pairs(node.outputs).map(([name], i) => `Outputs(${i})=(OutputName="${name}")`),
+    ];
+  },
+};
+
 // ---- inline HLSL --------------------------------------------------------------------
 // The one expression whose pins are not fixed by its class, so the generated entry (a single
 // pin called "Input") cannot describe it: a Custom node carries an *array* of named inputs.

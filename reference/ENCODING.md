@@ -48,13 +48,19 @@ in the collapsed section sets `bAdvancedView=True` (the node then also needs
 `AdvancedPinDisplay=Shown`).
 
 **Outputs** add `Direction="EGPD_Output"` and use `PinType.PinCategory="mask"`, where the
-sub-category selects the channel:
+sub-category colours the channel:
 
 | sub-category | meaning |
 |---|---|
-| *(empty)* | the whole value |
+| *(empty)* | no colour — the whole value, **or a combination with no name** |
 | `red` `green` `blue` `alpha` | one channel |
 | `rgba` | all four |
+
+**The sub-category does not select anything.** It is the pin's colour, and it only has words
+for the five combinations above — RGB (mask bits `1110`) has no name and falls through to the
+empty string, which is exactly what an unmasked output looks like. Reading a tap back off the
+sub-category therefore loses RGB silently. What actually selects channels lives on the wire,
+below.
 
 Numbered outputs (`Output`, `Output2`, …) are the Constant\*Vector convention; `TextureSample`
 instead names them after the channels (`RGB`, `R`, `G`, `B`, `A`, `RGBA`). A scalar-valued
@@ -68,6 +74,23 @@ and the long tail of `PinType.*` booleans, all `False` in practice.
 A wire is written on **both** ends, as `LinkedTo=(<NodeName> <PinId>,)` inside each pin. One
 output feeding two inputs lists both peers in its own `LinkedTo` and appears once in each
 target's. Miss an end and the editor drops the connection.
+
+But `LinkedTo` is only what the *graph* draws. What the material **compiles** is the
+`FExpressionInput` on the consuming expression, and it carries the tap itself:
+
+```
+A=(Expression="/Script/Engine.MaterialExpressionTextureSample'…_7'",Mask=1,MaskR=1,MaskG=1,MaskB=1)
+```
+
+- `OutputIndex` picks which entry of `Outputs` the expression compiles. It defaults to 0 and
+  many expressions ignore it entirely — `TextureSample` returns the whole RGBA from every one
+  of its six outputs.
+- `Mask` plus `MaskR`/`MaskG`/`MaskB`/`MaskA` is the swizzle, and for those expressions it is
+  the *only* thing that distinguishes `.G` from `.RGB`. Unreal writes only the bits that are
+  set, and omits the group entirely for an unmasked output.
+
+Record a tap on the pin alone and the graph draws correctly while the paste reads the wrong
+value — the same failure mode as the value trap below, and just as quiet.
 
 ## The value trap
 
@@ -87,6 +110,56 @@ The formats differ per node, which is what makes this easy to get wrong:
 
 `material-nodes.mjs` encodes this as `pinDefaults`, and `emitT3D` refuses to emit when the two
 drift apart.
+
+## Nodes that agree on a Guid
+
+Three node types find their partner by Guid rather than by a wire, and they do not behave the
+same way when pasted.
+
+**Named reroutes are safe to author.** A `NamedRerouteDeclaration` holds `Name`, `NodeColor`
+and `VariableGuid`; a `NamedRerouteUsage` holds `DeclarationGuid` (and a transient
+`Declaration` pointer that paste rebuilds). `PostCopyNode` on the usage looks for the
+declaration among the pasted expressions first and falls back to the whole material; the
+declaration only regenerates its Guid when the target material already holds that one, and
+then rewrites the pasted usages to match. So a generated pair keeps whatever Guid it was
+given, and colliding with an existing graph is handled rather than fatal.
+
+**Function inputs are not.** `UMaterialExpressionFunctionInput::PostEditImport` calls
+`ConditionallyGenerateId(true)` — a *forced* regeneration — so the `Id` you paste is discarded.
+`FunctionOutput` does the same.
+
+That makes `MaterialExpressionMaterialFunctionCall` a two-step job:
+
+```
+MaterialFunction="/Script/Engine.MaterialFunction'/Game/…/MF_Name.MF_Name'"
+FunctionInputs(0)=(ExpressionInputId=<Guid>,Input=(Expression="…",InputName="InBaseAlpha"))
+FunctionOutputs(0)=(ExpressionOutputId=<Guid>,Output=(OutputName="LayerBlendColor"))
+Outputs(0)=(OutputName="LayerBlendColor")
+```
+
+`UpdateFromFunctionResource` restores each wire by matching `ExpressionInputId` against the
+Ids inside the referenced asset — `FindInputById`, with **no** fall back to the input's name.
+Since those Ids are minted when the function is built, they have to be read back off the built
+asset before a call node can be emitted. Build the function first, then the caller.
+
+## Comments are two objects
+
+A comment box is a `MaterialGraphNode_Comment` wrapping a `MaterialExpressionComment`, and the
+inner object is the one that persists: `FMaterialEditor::PasteNodesHere` adds it to the
+material's comment collection and skips any comment node that does not have one. Emit the
+graph node alone and the box draws, disappears when the asset is reopened, and takes the
+editor down if it is deleted first — the delete path dereferences the pointer unguarded.
+
+Both halves carry the geometry, under different names: `NodePosX`/`NodePosY`/`NodeWidth`/
+`NodeHeight`/`NodeComment` on the graph node, `MaterialExpressionEditorX`/`Y`/`SizeX`/`SizeY`/
+`Text` on the expression. Write them to agree.
+
+## bCanRenameNode
+
+A graph-node property, so nothing recomputes it on paste. Real exports carry
+`bCanRenameNode=True` on parameters and on named reroute declarations, and omit it everywhere
+else. Leave it off and those nodes arrive unrenameable — which matters most for a reroute,
+whose name *is* the variable.
 
 ## Checking a new node type
 
