@@ -59,13 +59,16 @@ export default {
   property, never to restate the same number.
 - Positions are optional. Without them the emitter lays the graph out by dependency depth
   and relaxes rows toward each node's neighbours. Set `x`/`y` on a node to pin it.
-- `block: "Glow"` on a node puts it in a named block. Each block is laid out as its own
-  horizontal band, in the order the spec first mentions it, and **gets a comment box drawn
-  round it automatically** —
-  which is how a large graph reads as stages rather than as one field of nodes. Colour a box
-  with `blockColors: { Glow: "(R=..,G=..,B=..,A=0.400000)" }`. Nodes with no `block` share one
+- `block: "Glow"` on a node puts it in a named block. Each block is laid out on its own, in the
+  order the spec first mentions it, then packed across the page and wrapped — so a big graph
+  reads left to right and then down, as stages rather than as one field of nodes. Each block
+  **gets a comment box drawn round it automatically**; colour one with
+  `blockColors: { Glow: "(R=..,G=..,B=..,A=0.400000)" }`. Nodes with no `block` share one
   unnamed band and get no box, so existing specs are unaffected. `comments` is still there for
   a box that is not a block, and takes explicit `x`/`y`/`w`/`h`.
+- `layout: { laneColumns: 28 }` widens the page a graph wraps at (default 24 columns). Raise it
+  for a wide monitor or a graph with many small blocks; the other knobs are `columnGap`,
+  `rowGap`, `bandGap` and `bandColumns`.
 
 ## Available node types
 

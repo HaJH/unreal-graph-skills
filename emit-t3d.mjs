@@ -39,11 +39,12 @@ const maskFields = (bits) =>
 // relaxed towards the average height of each node's neighbours, which pulls a parameter up
 // beside the node it feeds instead of stacking every source in one very tall first column.
 //
-// A spec that names blocks gets one horizontal band per block, ordered upstream-first, each
-// laid out on its own rows. That is what lets a comment box wrap a block: its members end up
-// contiguous, so the box is just their bounding rectangle.
+// A spec that names blocks gets one band per block, packed across the page and wrapped, so it
+// reads left to right and then down. That is also what lets a comment box wrap a block: its
+// members end up contiguous, so the box is just their bounding rectangle.
 const autoLayout = (nodes, links, {
-  columnGap = 260, rowGap = 170, bandGap = 260, sweeps = 6,
+  columnGap = 260, rowGap = 170, bandGap = 340,
+  laneColumns = 24, bandColumns = 2, sweeps = 6,
 } = {}) => {
   const upstream = new Map(nodes.map((n) => [n.id, []]));
   const downstream = new Map(nodes.map((n) => [n.id, []]));
@@ -56,23 +57,34 @@ const autoLayout = (nodes, links, {
   // inputs would drop every constant and parameter into column zero however late it is
   // consumed, stranding it far from the node it feeds; measuring to the output puts each one
   // directly in front of its consumer, which is how the Material Editor reads.
-  const height = new Map();
-  const resolve = (id, seen = new Set()) => {
-    if (height.has(id)) return height.get(id);
-    if (seen.has(id)) return 0; // a cycle cannot happen in a material, but never hang on one
-    seen.add(id);
-    const children = downstream.get(id) ?? [];
-    const h = children.length ? Math.max(...children.map((c) => resolve(c, seen))) + 1 : 0;
-    height.set(id, h);
-    return h;
+  //
+  // The distance is measured *inside* a block. Measuring it across the whole graph squeezed each
+  // block into whichever two or three columns its own chain happened to land on while the
+  // bands stacked downwards, so a seven-stage graph came out as one very tall ribbon. Blocks
+  // reach each other through named reroutes rather than wires, so each is free to start again
+  // from its own left edge.
+  const depthWithin = (members) => {
+    const inside = new Set(members.map((n) => n.id));
+    const height = new Map();
+    const resolve = (id, seen = new Set()) => {
+      if (height.has(id)) return height.get(id);
+      if (seen.has(id)) return 0; // a cycle cannot happen in a material, but never hang on one
+      seen.add(id);
+      const children = (downstream.get(id) ?? []).filter((c) => inside.has(c));
+      const h = children.length ? Math.max(...children.map((c) => resolve(c, seen))) + 1 : 0;
+      height.set(id, h);
+      return h;
+    };
+    members.forEach((n) => resolve(n.id));
+    const tallest = Math.max(...members.map((n) => height.get(n.id)));
+    return new Map(members.map((n) => [n.id, tallest - height.get(n.id)]));
   };
-  nodes.forEach((n) => resolve(n.id));
-  const tallest = Math.max(...nodes.map((n) => height.get(n.id)));
-  const depth = new Map(nodes.map((n) => [n.id, tallest - height.get(n.id)]));
 
-  // Rows for one set of nodes. Columns still come from the graph-wide depth, so the flow reads
-  // left to right across bands; only the vertical packing is local to the set.
-  const rowsFor = (members) => {
+  // Columns come from that depth; rows are then relaxed towards the average height of each
+  // node's neighbours, which pulls a parameter up beside the node it feeds instead of stacking
+  // every source in one very tall first column.
+  const arrange = (members) => {
+    const depth = depthWithin(members);
     const columns = new Map();
     for (const node of members) {
       const c = depth.get(node.id);
@@ -108,7 +120,8 @@ const autoLayout = (nodes, links, {
         settle(columns.get(c));
       }
     }
-    return row;
+    for (const [id, y] of row) row.set(id, Math.round(y));
+    return { depth, row };
   };
 
   // Bands run in the order the spec first mentions each block. Deriving the order from depth
@@ -118,18 +131,28 @@ const autoLayout = (nodes, links, {
   const bands = [...new Set(nodes.map((n) => n.block ?? ""))]
     .map((name) => ({ name, members: nodes.filter((n) => (n.block ?? "") === name) }));
 
-  let top = 0;
+  // Bands are packed across a lane until the next one would not fit, then wrapped, so the page
+  // reads left to right and then down — the order the blocks were written in.
+  let laneTop = 0;
+  let laneHeight = 0;
+  let column = 0;
   for (const band of bands) {
-    const row = rowsFor(band.members);
-    let deepest = 0;
-    for (const node of band.members) {
-      const y = Math.round(row.get(node.id));
-      deepest = Math.max(deepest, y);
-      if (node.x !== undefined && node.y !== undefined) continue;
-      node.x = depth.get(node.id) * columnGap;
-      node.y = top + y * rowGap;
+    const { depth, row } = arrange(band.members);
+    const width = Math.max(...band.members.map((n) => depth.get(n.id))) + 1;
+    const height = Math.max(...band.members.map((n) => row.get(n.id))) + 1;
+
+    if (column > 0 && column + width > laneColumns) {
+      laneTop += laneHeight * rowGap + bandGap;
+      laneHeight = 0;
+      column = 0;
     }
-    top += (deepest + 1) * rowGap + bandGap;
+    for (const node of band.members) {
+      if (node.x !== undefined && node.y !== undefined) continue;
+      node.x = (column + depth.get(node.id)) * columnGap;
+      node.y = laneTop + row.get(node.id) * rowGap;
+    }
+    column += width + bandColumns;
+    laneHeight = Math.max(laneHeight, height);
   }
 };
 
@@ -184,7 +207,9 @@ export function emitT3D(spec) {
     }
   }
 
-  autoLayout(nodes, links);
+  // `layout` lets a spec widen the lane a graph wraps at, or tighten the gaps — the defaults
+  // suit a handful of blocks, and a big one may want a wider page to stay readable.
+  autoLayout(nodes, links, spec.layout ?? {});
 
   const nodeName = (n) => `MaterialGraphNode_${n.index}`;
   const exprName = (n) => `${NODES[n.type].expression}_${n.index}`;
