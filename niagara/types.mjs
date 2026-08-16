@@ -8,20 +8,27 @@
 
 // `struct` is the UScriptStruct path a pin points at; `kind` picks the wrapper Unreal writes
 // round it. `index` is the UE 5.8 registry index, harvested from a real editor copy.
+//
+// `default` is the pin's inline value text when nothing is wired in. The engine does NOT use one
+// format for all of them -- a float is "0.000000", a Vector2f is struct-style "X=0.000 Y=0.000",
+// a Vector3f is CSV "0.000,0.000,0.000" -- because each type's editor utility writes its own.
+// Entries marked `observed` were read off a real UE 5.8 copy; the rest are plain forms that the
+// value parser accepts. Prefer replacing an unobserved one with a real capture over tidying it.
 export const TYPES = {
-  float:    { struct: "/Script/Niagara.NiagaraFloat",        kind: "ScriptStruct", index: 99,  default: "0" },
-  int:      { struct: "/Script/Niagara.NiagaraInt32",        kind: "ScriptStruct", index: 101, default: "0" },
+  float:    { struct: "/Script/Niagara.NiagaraFloat",        kind: "ScriptStruct", index: 99,  default: "0.000000", observed: true },
+  int:      { struct: "/Script/Niagara.NiagaraInt32",        kind: "ScriptStruct", index: 101, default: "0", observed: true },
   bool:     { struct: "/Script/Niagara.NiagaraBool",         kind: "ScriptStruct", index: null, default: "false" },
-  position: { struct: "/Script/Niagara.NiagaraPosition",     kind: "ScriptStruct", index: 107, default: "0,0,0" },
-  numeric:  { struct: "/Script/Niagara.NiagaraNumeric",      kind: "ScriptStruct", index: null, default: "0" },
+  position: { struct: "/Script/Niagara.NiagaraPosition",     kind: "ScriptStruct", index: 107, default: "0.000,0.000,0.000" },
+  numeric:  { struct: "/Script/Niagara.NiagaraNumeric",      kind: "ScriptStruct", index: null, default: "0.0" },
   map:      { struct: "/Script/Niagara.NiagaraParameterMap", kind: "ScriptStruct", index: 95,  default: undefined },
   matrix:   { struct: "/Script/Niagara.NiagaraMatrix",       kind: "ScriptStruct", index: null, default: undefined },
-  id:       { struct: "/Script/Niagara.NiagaraID",           kind: "ScriptStruct", index: null, default: undefined },
-  vec2:     { struct: "/Script/CoreUObject.Vector2f",        kind: "ScriptStruct", index: 103, default: "0,0" },
-  vec3:     { struct: "/Script/CoreUObject.Vector3f",        kind: "ScriptStruct", index: null, default: "0,0,0" },
-  vec4:     { struct: "/Script/CoreUObject.Vector4f",        kind: "ScriptStruct", index: null, default: "0,0,0,0" },
-  color:    { struct: "/Script/CoreUObject.LinearColor",     kind: "ScriptStruct", index: 106, default: "1,1,1,1" },
-  quat:     { struct: "/Script/CoreUObject.Quat4f",          kind: "ScriptStruct", index: null, default: undefined },
+  id:       { struct: "/Script/Niagara.NiagaraID",           kind: "ScriptStruct", index: null, default: "-1,-1", observed: true },
+  vec2:     { struct: "/Script/CoreUObject.Vector2f",        kind: "ScriptStruct", index: 103, default: "X=0.000 Y=0.000", observed: true },
+  vec3:     { struct: "/Script/CoreUObject.Vector3f",        kind: "ScriptStruct", index: null, default: "0.000,0.000,0.000", observed: true },
+  vec4:     { struct: "/Script/CoreUObject.Vector4f",        kind: "ScriptStruct", index: null, default: "0.000,0.000,0.000,0.000" },
+  color:    { struct: "/Script/CoreUObject.LinearColor",     kind: "ScriptStruct", index: 106, default: "1.000,1.000,1.000,1.000" },
+  // Identity, not zero — a zero quaternion is not a rotation, and the editor writes this.
+  quat:     { struct: "/Script/CoreUObject.Quat4f",          kind: "ScriptStruct", index: null, default: "0.000,0.000,0.000,1.000", observed: true },
 };
 
 // What `FNiagaraTypeDefinition::Get*Def()` in the engine's op table means here, so the op

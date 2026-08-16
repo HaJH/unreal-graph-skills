@@ -146,6 +146,36 @@ keeps the payload readable. `"Alpha"`-style names, which differ, are always writ
 | `NiagaraNodeParameterMapSet` | pins only — `Source` in, `Dest` out, one input pin per parameter written |
 | `NiagaraNodeCustomHlsl` | `CustomHlsl="…"` (escaped `\r\n`), `Signature=(Inputs=(…),Outputs=(…))` |
 | `NiagaraNodeConvert` | `Connections(N)=(SourcePinId=…,SourcePath=("X"),DestinationPinId=…,DestinationPath=("X"))`, `ExpandedItems`, `AutowireBreakType` |
+| `NiagaraNodeFunctionCall` | `FunctionScript`, `CachedChangeId`, `FunctionDisplayName` |
+
+### Function calls
+
+```
+Begin Object Class=/Script/NiagaraEditor.NiagaraNodeFunctionCall Name="NiagaraNodeFunctionCall_195" ExportPath="…"
+   FunctionScript="/Script/Niagara.NiagaraScript'/Niagara/Functions/Rotation/LerpQuaternion.LerpQuaternion'"
+   CachedChangeId=0EA505954FBBD01D4B2DB08975C719C1
+   FunctionDisplayName="LerpQuaternion"
+   …
+   Pin PinName="Quat A"       Quat4f          DefaultValue="0.000,0.000,0.000,1.000"
+   Pin PinName="Quat B"       Quat4f          DefaultValue="0.000,0.000,0.000,1.000"
+   Pin PinName="Lerp Factor"  NiagaraFloat    DefaultValue="0.000000"
+   Pin PinName="Quaternion"   Quat4f  out     bDefaultValueIsIgnored=True
+```
+
+- The asset reference is `Class'<PackagePath>.<AssetName>'`, so the asset name repeats.
+- **Pin names are the called script's own input names, verbatim** — spaces included, no
+  namespace prefix. Engine assets are not always tidy: `/Niagara/Functions/Math/Nlerp_Function`
+  names its output `"Ouput"`.
+- **An output pin carries `bDefaultValueIsIgnored=True`** and no `DefaultValue`. This is the one
+  place the flag differs; Map Get, Map Set and operator outputs all leave it `False`.
+- Function-call pins carry no `PinFriendlyName` or `PinToolTip`.
+- `CachedChangeId` caches the called script's change id. Leaving it at the default marks the
+  node stale, so Niagara rebuilds the pins from the asset — which is what you want for pins a
+  spec declared by hand. This emitter omits it deliberately.
+- Default text is formatted per type: a float as `"0.000000"`, a vector as `"0.000,0.000,0.000"`,
+  a quaternion as identity `"0.000,0.000,0.000,1.000"`. Operator pins use the op's own strings
+  instead (`"0.0"`, `"1.0"`), so the two contexts do not agree on formatting and neither has to —
+  the value text is parsed by the type's editor utility, not compared.
 
 A Map Get parameter pin comes in pairs: the **output** pin (`PinName="Module.LifeTime"`,
 `Direction="EGPD_Output"`, non-zero `PersistentGuid`) and a matching **input** pin with no

@@ -100,6 +100,8 @@ export const NODES = {
 
   // Calls a module, dynamic input or function script asset. Its pins come from the asset, so
   // the spec states them -- the same bargain material-graph strikes for MaterialFunctionCall.
+  // Pin names are the called script's own input names, spaces and all ("Quat A", "Lerp Factor"),
+  // with no namespace prefix.
   FunctionCall: {
     class: "NiagaraNodeFunctionCall",
     pins: (n) => [
@@ -109,12 +111,17 @@ export const NODES = {
       }),
       ...(n.outputs ?? []).map((p) => {
         const [name, type] = param(p);
-        return { name, dir: "out", type };
+        // A function call's outputs are filled by the call, so the editor marks their defaults
+        // ignored -- the one place a pin flag differs from every other node.
+        return { name, dir: "out", type, defaultIgnored: true };
       }),
     ],
     props: (n) => {
       if (!n.function) throw new Error(`FunctionCall "${n.id}" needs a \`function\` asset path`);
       const short = n.function.split("/").pop();
+      // No CachedChangeId on purpose. A real copy caches the called script's change id; leaving
+      // it at the default means Niagara treats the node as stale and rebuilds its pins from the
+      // asset, which is exactly what should happen to spec-declared pins that got it wrong.
       return [
         `FunctionScript="/Script/Niagara.NiagaraScript'${n.function}.${short}'"`,
         `FunctionDisplayName="${n.label ?? short}"`,

@@ -118,17 +118,32 @@ engine's own. Grep it when unsure — each entry lists its pins verbatim. Names 
 `FunctionCall` takes its pins from the asset it points at, so the spec states them:
 
 ```js
-{ id: "lerp", type: "FunctionCall",
-  function: "/Niagara/DynamicInputs/Lerp/Lerp_Float",
-  inputs: [["A", "float"], ["B", "float"], ["Alpha", "float"]],
-  outputs: [["Value", "float"]],
-  in: { A: "lo", B: "hi", Alpha: "t" } }
+{ id: "slerp", type: "FunctionCall",
+  function: "/Niagara/Functions/Rotation/LerpQuaternion",
+  inputs: [["Quat A", "quat"], ["Quat B", "quat"], ["Lerp Factor", "float"]],
+  outputs: [["Quaternion", "quat"]],
+  in: { "Quat A": "from", "Quat B": "to", "Lerp Factor": "t" } }
 ```
 
-**`FunctionCall` pin names are not yet verified against a real copy.** The engine builds them
-from the called script's exposed input nodes (`UNiagaraNodeFunctionCall::AllocateDefaultPins`),
-and whether a dynamic input's pins keep the `Module.` prefix has not been confirmed. The graph
-renders either way; if a paste comes in unwired, copy a real call out of the editor and compare.
+**Pin names are the called script's own input names, verbatim** — spaces included, no namespace
+prefix. `LerpQuaternion` really does expose `"Quat A"`, `"Quat B"`, `"Lerp Factor"` and
+`"Quaternion"` (verified against a real UE 5.8 copy). Engine assets are not always tidy:
+`/Niagara/Functions/Math/Nlerp_Function` names its output `"Ouput"`, typo and all. Read the
+names off the node in the editor rather than guessing them from the asset name.
+
+To find the names without opening the editor, read them off the asset:
+
+```
+node niagara/asset-names.mjs <path/to/Script.uasset> [filter]
+```
+
+It lists every FName in the package, so it is a shortlist to recognise rather than an authority —
+but it is enough to catch `"Ouput"` before it costs you a paste. `examples/niagara/velocity-blend.spec.mjs`
+is built this way.
+
+The emitter deliberately leaves `CachedChangeId` unset, so Niagara treats the node as stale and
+rebuilds its pins from the asset. A spec that gets a pin name slightly wrong therefore heals on
+paste instead of arriving broken.
 
 ## Regenerating
 
@@ -176,6 +191,7 @@ Paths are relative to the **plugin root** — two levels up from this file.
 | `niagara/types.mjs` | type paths and the registry indices |
 | `niagara/ue-niagara-ops.mjs` | generated operator table |
 | `niagara/generate-ops.mjs` | regenerates it from an installed engine |
+| `niagara/asset-names.mjs` | lists the FNames in a script .uasset, for FunctionCall pin names |
 | `lib/` | layout and GUIDs, shared with `material-graph` |
 | `page.template.html` | page shell, including the stage row |
 | `vendor/` | bue-render (MIT) — its Niagara support is upstream, not a local patch |

@@ -154,6 +154,8 @@ formats, both verified against real editor copies.
 | [Hologram Scanlines](https://hajh.github.io/unreal-graph-skills/hologram-scanline.html) | scrolling scanlines and a rim, with nothing sampled |
 | [Rounded Rectangle Mask](https://hajh.github.io/unreal-graph-skills/ui-rounded-rect.html) | a signed distance field in a `Custom` node |
 | [Pop and Fade](https://hajh.github.io/unreal-graph-skills/pop-fade.html) | a Niagara scratch pad module scaling a sprite over its life |
+| [Ease Fade](https://hajh.github.io/unreal-graph-skills/ease-fade.html) | alpha eased out in a Custom HLSL node, RGB left alone |
+| [Velocity Blend](https://hajh.github.io/unreal-graph-skills/velocity-blend.html) | a call into an engine function script, pins and all |
 
 ## Known limits
 
