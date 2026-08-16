@@ -35,7 +35,19 @@ const collect = (re, value = (m) => m[2]) => {
 // `static FName A(TEXT("A"));` — the pin names, declared once and reused across every op.
 const names = collect(/\bFName\s+(\w+)\s*\(\s*TEXT\("([^"]*)"\)\s*\)/g);
 // `FString CategoryName(TEXT("Numeric"));`, and every default-value string beside it.
-const strings = collect(/\bFString\s+(\w+)\s*\(\s*TEXT\("([^"]*)"\)\s*\)/g);
+//
+// A matrix default is written across four source lines joined by C++ line continuations:
+//
+//     FString Default_MatrixOne(TEXT(
+//         "1.0,0.0,0.0,0.0,\
+//         0.0,1.0,0.0,0.0,\
+//         …"));
+//
+// The compiler drops each backslash-newline and keeps the indentation that follows, so the
+// value really does carry those tabs. Reproduce that rather than tidying it, or the pin default
+// stops matching what the editor writes.
+const strings = collect(/\bFString\s+(\w+)\s*\(\s*TEXT\(\s*"((?:[^"\\]|\\[\s\S])*)"\s*\)\s*\)/g,
+  (m) => m[2].replace(/\\\r?\n/g, ""));
 // `FNiagaraTypeDefinition NumericType = FNiagaraTypeDefinition::GetGenericNumericDef();`
 const typeVars = collect(/\bFNiagaraTypeDefinition\s+(\w+)\s*=\s*FNiagaraTypeDefinition::(\w+)\(\)/g);
 // `static FText AText = NSLOCTEXT("NiagaraOpInfo", "First Function Param", "A");`

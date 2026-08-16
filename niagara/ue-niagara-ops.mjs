@@ -377,40 +377,40 @@ export const OPS = {
     out: [{ name: "Result", type: "bool", tip: "Result" }],
   },
   "Matrix::Transpose": {
-    in: [{ name: "M", type: "matrix", tip: "M" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }],
     out: [{ name: "Result", type: "matrix", tip: "Result" }],
   },
   "Matrix::Row0": {
-    in: [{ name: "M", type: "matrix", tip: "M" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }],
     out: [{ name: "Result", type: "vec4", tip: "Result" }],
   },
   "Matrix::Row1": {
-    in: [{ name: "M", type: "matrix", tip: "M" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }],
     out: [{ name: "Result", type: "vec4", tip: "Result" }],
   },
   "Matrix::Row2": {
-    in: [{ name: "M", type: "matrix", tip: "M" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }],
     out: [{ name: "Result", type: "vec4", tip: "Result" }],
   },
   "Matrix::Row3": {
-    in: [{ name: "M", type: "matrix", tip: "M" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }],
     out: [{ name: "Result", type: "vec4", tip: "Result" }],
   },
   "Matrix::MatrixMultiply": {
-    in: [{ name: "A", type: "matrix", tip: "A" }, { name: "B", type: "matrix", tip: "B" }],
+    in: [{ name: "A", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "A" }, { name: "B", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "B" }],
     out: [{ name: "Result", type: "matrix", tip: "Result" }],
     variadic: true,
   },
   "Matrix::MatrixVectorMultiply": {
-    in: [{ name: "M", type: "matrix", tip: "M" }, { name: "V", type: "vec4", def: "1.0,1.0,1.0", tip: "V" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }, { name: "V", type: "vec4", def: "1.0,1.0,1.0", tip: "V" }],
     out: [{ name: "Result", type: "vec4", tip: "Result" }],
   },
   "Matrix::TransformPosition": {
-    in: [{ name: "M", type: "matrix", tip: "M" }, { name: "V", type: "position", def: "1.0,1.0,1.0", tip: "V" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }, { name: "V", type: "position", def: "1.0,1.0,1.0", tip: "V" }],
     out: [{ name: "Result", type: "position", tip: "Result" }],
   },
   "Matrix::TransformVector": {
-    in: [{ name: "M", type: "matrix", tip: "M" }, { name: "V", type: "vec3", def: "1.0,1.0,1.0", tip: "V" }],
+    in: [{ name: "M", type: "matrix", def: "1.0,0.0,0.0,0.0,\t\t0.0,1.0,0.0,0.0,\t\t0.0,0.0,1.0,0.0,\t\t0.0,0.0,0.0,1.0", tip: "M" }, { name: "V", type: "vec3", def: "1.0,1.0,1.0", tip: "V" }],
     out: [{ name: "Result", type: "vec3", tip: "Result" }],
   },
   "Vector3::Cross": {

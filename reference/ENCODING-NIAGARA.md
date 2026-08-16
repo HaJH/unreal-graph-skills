@@ -172,10 +172,17 @@ Begin Object Class=/Script/NiagaraEditor.NiagaraNodeFunctionCall Name="NiagaraNo
 - `CachedChangeId` caches the called script's change id. Leaving it at the default marks the
   node stale, so Niagara rebuilds the pins from the asset — which is what you want for pins a
   spec declared by hand. This emitter omits it deliberately.
-- Default text is formatted per type: a float as `"0.000000"`, a vector as `"0.000,0.000,0.000"`,
-  a quaternion as identity `"0.000,0.000,0.000,1.000"`. Operator pins use the op's own strings
-  instead (`"0.0"`, `"1.0"`), so the two contexts do not agree on formatting and neither has to —
-  the value text is parsed by the type's editor utility, not compared.
+- Default text is formatted per type: a float as `"0.000000"`, a `Vector2f` struct-style as
+  `"X=0.000 Y=0.000"`, other vectors and a quaternion comma-separated to three places. Operator
+  pins use the op's own strings instead (`"0.0"`, `"1.0"`), so the two contexts do not agree on
+  formatting and neither has to — the value text is parsed by the type's editor utility, not
+  compared against anything.
+- **A matrix default is the one format still unobserved on a function-call pin.** The operator
+  table's version is known from engine source and carries the source indentation verbatim
+  (`"1.0,0.0,0.0,0.0,		0.0,1.0,…"`), but what a type-side matrix pin writes has not been seen
+  in a real copy. `niagara/generate-functions.mjs` leaves it empty rather than assuming the two
+  agree. To settle it, copy an unwired matrix pin — `/Niagara/Functions/Math/GetMatrixScale` has
+  one, named `Matrix`.
 
 A Map Get parameter pin comes in pairs: the **output** pin (`PinName="Module.LifeTime"`,
 `Direction="EGPD_Output"`, non-zero `PersistentGuid`) and a matching **input** pin with no
