@@ -174,6 +174,10 @@ named("NamedRerouteDeclaration", (node, wiredOf, ctx) => {
 
 named("NamedRerouteUsage", (node, _wiredOf, ctx) => [
   `DeclarationGuid=${ctx.guid(`reroute/${node.of}`)}`,
+  // Unreal captions a usage with its declaration's name, but the renderer would have to
+  // resolve the Guid across the whole graph to do the same. Desc is the one field it can read
+  // locally, so the variable name travels on the node itself.
+  `Desc="${node.of}"`,
 ]);
 
 // ---- calling a material function -----------------------------------------------------

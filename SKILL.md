@@ -127,14 +127,24 @@ expressions, so a spec emits a function's *body* like any other graph. Calling o
   in: { UV: "uv", Offset: "offset" } }
 ```
 
-**Build the function before the caller.** Each wire into a call survives only while
-`FunctionInputs(i).ExpressionInputId` matches the Id of the corresponding `FunctionInput`
-inside that asset, `UpdateFromFunctionResource` matches on that Guid alone with no fall back
-to the name, and `UMaterialExpressionFunctionInput::PostEditImport` force-regenerates the Id
-whenever a body is pasted. So the Ids only exist once the function is built — read them back
-off it (`unreal.load_asset(...)`, then each `MaterialExpressionFunctionInput`'s `id`) and put
-them in the spec. An entry given as a bare name instead of a `[name, id]` pair still emits the
-right pin, just unconnected, which is a visible gap rather than a silent mis-wire.
+**Build the function before the caller**, and give the ids only if you have them. Reading the
+source says a wire into a call survives only while `FunctionInputs(i).ExpressionInputId`
+matches the Id of the matching `FunctionInput` inside the asset — `UpdateFromFunctionResource`
+resolves by that Guid alone, with no fall back to the name, and
+`UMaterialExpressionFunctionInput::PostEditImport` regenerates the Id whenever a body is
+pasted, so the numbers cannot be agreed in advance.
+
+**In practice (UE 5.8) a call pasted with no ids at all kept every one of its input wires** —
+naming the function and the inputs was enough. Do not lean on that: it is one engine version,
+the mechanism is not the documented one, and the failure mode is a silent mis-wire. Emit the
+ids when you can, and check the call's inputs after pasting either way.
+
+The ids are not reachable from Python: `Id` on a `FunctionInput` is a bare `UPROPERTY()` and
+so is `FunctionInputs` on the call, neither of which reflection exposes. Copy the function's
+nodes in the editor and read the ids out of the T3D, or leave them out and verify. What *is*
+scriptable is repair: `set_material_function` plus `connect_material_expressions` lets the
+editor fill the ids in itself, and it resolves pins by name — note that an unnamed input pin
+answers to the FName `'None'`, not to `'Input'`.
 
 Not included: Substrate/Strata slabs, the custom-output family, and composites with their pin
 bases — subgraph plumbing with its own rules.
@@ -155,9 +165,12 @@ whose entry is marked `pinNamesVary`, where the label depends on the node's own 
 
 ## Known limits
 
-- **Parameter nodes are titled by class, not by parameter name.** A `ScalarParameter` reads
-  "ScalarParameter", not "PanSpeed". The renderer titles material nodes from the expression
-  class; blueprintue.com behaves the same. Put the name in a `comments` box when it matters.
+- **Node titles follow Unreal's own caption**, via a local patch to the vendored renderer
+  (`vendor/PATCHES.md`). A parameter draws as its parameter name, a named reroute declaration
+  as its variable, a `Custom` as its `desc`, and anything else falls back to the class name the
+  way blueprintue.com does. A `NamedRerouteUsage` carries its variable in `Desc`, because its
+  link to the declaration is a Guid the renderer cannot resolve on its own. **Re-vendoring
+  drops the patch.**
 - **Inline value fields are not drawn.** bue-render disables pin inputs for material nodes,
   so a constant shows its pins but not its numbers.
 - **`MaterialOutput` is display-only on paste.** Unreal allows one root per material and
