@@ -1,15 +1,18 @@
-// Builds a self-contained graph page from a spec.
+// Builds a self-contained page from a spec.
 //
 //   node build.mjs <spec.mjs> [out.html]
 //
-// The domain is read off the spec: a `material` key builds Material Editor T3D, a `script` key
-// builds a Niagara script graph. `domain: "material" | "niagara"` overrides the guess.
+// A spec is either a single graph -- a `material` key builds Material Editor T3D, a `script` key
+// builds a Niagara script graph -- or a `sections` array, which is how a build guide is written:
+// prose, an emitter stack and any number of graphs on one page, in reading order.
 //
-// The renderer (bue-render, the one blueprintue.com runs) is inlined whole, so the result
-// makes zero network requests — required, because the Artifact CSP blocks every external host.
+// The renderer (bue-render, the one blueprintue.com runs) is inlined whole, so the result makes
+// zero network requests -- required, because the Artifact CSP blocks every external host.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname, resolve, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { renderStack } from "./lib/stack.mjs";
+import { renderProse } from "./lib/prose.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (f) => readFileSync(join(here, f), "utf8");
@@ -26,8 +29,8 @@ const outPath = outArg
 
 const spec = (await import(pathToFileURL(specPath).href)).default;
 
-// Each domain states how to name an untitled page and what to print above the heading, so the
-// shell below stays free of per-domain special cases.
+// Each graph domain states how to name an untitled page and what to print above the heading, so
+// the shell below stays free of per-domain special cases.
 const DOMAINS = {
   material: {
     module: "./material/emit-t3d.mjs",
@@ -58,12 +61,9 @@ const DOMAINS = {
 };
 
 const domainOf = (s) => s.domain ?? (s.script ? "niagara" : "material");
-const key = domainOf(spec);
-const domain = DOMAINS[key];
-if (!domain) throw new Error(`unknown domain "${key}" — expected one of ${Object.keys(DOMAINS)}`);
 
-const api = await import(pathToFileURL(join(here, domain.module)).href);
-const { emitT3D } = api;
+// A single-graph spec is one section; writing it that way keeps one code path.
+const sections = spec.sections ?? [{ type: domainOf(spec), ...spec }];
 
 // Literal replacement — avoids $& / $1 expansion in String.replace patterns.
 const putAll = (haystack, needle, value) => haystack.split(needle).join(value);
@@ -73,51 +73,99 @@ const put = (haystack, needle, value) => {
   return haystack.slice(0, at) + value + haystack.slice(at + needle.length);
 };
 
-const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const css = read("vendor/bue-render.css");
 const external = css.match(/url\((?!['"]?data:)[^)]*\)/);
 if (external) throw new Error(`renderer css would be CSP-blocked: ${external[0]}`);
 
-const t3d = emitT3D(spec);
-const heading = spec.title ?? domain.subject(spec) ?? domain.fallback;
+const stats = [];
+const parts = [];
+const sources = [];
 
-// A stage row, when the domain has stages and the spec says which one it is in. A spec may
-// name a stage outside the default list (a simulation stage, an event handler) and it is
-// appended rather than rejected.
+for (const [i, section] of sections.entries()) {
+  const heading = section.heading ? `    <h2>${esc(section.heading)}</h2>\n` : "";
+  const body = section.body ? renderProse(section.body) : "";
+
+  if (section.type === "prose") {
+    parts.push(`  <section>\n${heading}${body}  </section>`);
+    continue;
+  }
+
+  if (section.type === "stack") {
+    parts.push(`  <section>\n${heading}${body}${renderStack(section)}  </section>`);
+    continue;
+  }
+
+  const domain = DOMAINS[section.type];
+  if (!domain) {
+    throw new Error(`unknown section type "${section.type}" — expected prose, stack, `
+      + Object.keys(DOMAINS).join(" or "));
+  }
+
+  const api = await import(pathToFileURL(join(here, domain.module)).href);
+  const t3d = api.emitT3D(section);
+  const id = `graph-${i}`;
+  const srcId = `src-${i}`;
+  const height = `${section.height ?? spec.height ?? 560}px`;
+
+  const counted = domain.countable ? domain.countable(t3d, api) : t3d;
+  stats.push({
+    label: section.heading ?? domain.subject(section) ?? domain.fallback,
+    nodes: (counted.match(/^Begin Object Class=/gm) ?? []).length,
+    pins: (counted.match(/CustomProperties Pin \(/g) ?? []).length,
+    wires: section.nodes.reduce((total, n) => total + Object.keys(n.in ?? {}).length, 0),
+  });
+
+  // Two ids, on purpose: the hidden textarea the renderer reads and the <pre> the reader copies
+  // hold the same text, and giving both the same id makes getElementById return the <pre>, whose
+  // `.value` is undefined — a graph panel that stays blank with no error.
+  parts.push(`  <section>
+${heading}${body}    <div class="panel" data-graph="${id}" data-height="${height}">
+      <div class="playground"></div>
+    </div>
+    <div class="src-head">
+      <div>
+        <h3>${esc(section.pasteHeading ?? domain.pasteHeading)}</h3>
+        <p class="sub">${section.pasteSub ?? domain.pasteSub}</p>
+      </div>
+      <button type="button" data-copies="${srcId}">Select T3D</button>
+    </div>
+    <pre id="${srcId}">${esc(t3d)}</pre>
+  </section>`);
+  sources.push(`<textarea id="${id}" hidden>${esc(t3d)}</textarea>`);
+}
+
+// A stage row, when the spec says which stage a single-graph page is in. A guide page states
+// that per stack section instead, so it is skipped there.
 const contextStrip = () => {
-  if (!spec.stage) return "";
-  const stages = spec.stages ?? domain.stages ?? [];
-  const all = stages.includes(spec.stage) ? stages : [...stages, spec.stage];
+  const stage = spec.stage;
+  if (!stage || spec.sections) return "";
+  const stages = spec.stages ?? DOMAINS[domainOf(spec)]?.stages ?? [];
+  const all = stages.includes(stage) ? stages : [...stages, stage];
   const items = all
-    .map((s) => `      <li${s === spec.stage ? ' aria-current="step"' : ""}>${esc(s)}</li>`)
+    .map((s) => `      <li${s === stage ? ' aria-current="step"' : ""}>${esc(s)}</li>`)
     .join("\n");
   return `    <ul class="stages">\n${items}\n    </ul>\n`;
 };
 
+const first = DOMAINS[domainOf(spec)];
+const heading = spec.title ?? first?.subject(spec) ?? "Unreal Graph";
+const eyebrow = spec.eyebrow ?? (spec.sections ? "Unreal build guide" : first?.eyebrow);
+
 let html = read("page.template.html");
-// A flat, wide chain wastes a tall frame; a spec can ask for a shorter one.
 html = putAll(html, "__PANEL_HEIGHT__", `${spec.height ?? 560}px`);
 html = put(html, "__TITLE__", esc(heading));
-html = put(html, "__EYEBROW__", esc(spec.eyebrow ?? domain.eyebrow));
+html = put(html, "__EYEBROW__", esc(eyebrow));
 html = put(html, "__HEADING__", esc(heading));
 html = put(html, "__DEK__", esc(spec.summary ?? ""));
 html = put(html, "__CONTEXT_STRIP__", contextStrip());
-html = put(html, "__PASTE_HEADING__", esc(domain.pasteHeading));
-// Raw: the copy carries an entity, and it is ours rather than spec-supplied.
-html = put(html, "__PASTE_SUB__", domain.pasteSub);
+html = put(html, "__SECTIONS__", `${parts.join("\n\n")}\n\n${sources.join("\n")}\n`);
 html = put(html, "__BUE_CSS__", css);
-html = put(html, "__T3D_TEXTAREA__", esc(t3d));
-html = put(html, "__T3D_ESCAPED__", esc(t3d));
 html = put(html, "__BUE_JS__", read("vendor/bue-render.js"));
 
 writeFileSync(outPath, html);
 
-const counted = domain.countable ? domain.countable(t3d, api) : t3d;
-const nodes = (counted.match(/^Begin Object Class=/gm) ?? []).length;
-const pins = (counted.match(/CustomProperties Pin \(/g) ?? []).length;
-// Count wires from the spec: an output feeding two inputs writes one LinkedTo on the output
-// and one on each input, so counting LinkedTo occurrences does not halve cleanly.
-const wires = spec.nodes.reduce((total, n) => total + Object.keys(n.in ?? {}).length, 0);
 console.log(`${outPath}  ${Math.round(Buffer.byteLength(html) / 1024)} KB`);
-console.log(`  ${nodes} nodes, ${pins} pins, ${wires} wires`);
+for (const s of stats) console.log(`  ${s.nodes} nodes, ${s.pins} pins, ${s.wires} wires — ${s.label}`);
+if (!stats.length) console.log(`  ${sections.length} section(s), no graphs`);

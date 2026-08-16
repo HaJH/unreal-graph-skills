@@ -109,6 +109,42 @@ pre{
   font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:12.5px;line-height:1.65;
   color:var(--ink);tab-size:3;
 }
+h3{font-family:var(--font-display);font-size:17px;margin:0}
+.sub.wide{max-width:74ch}
+.prose-list{margin:10px 0 0;padding-left:20px;color:var(--ink-soft);font-size:15px;max-width:74ch}
+.prose-list li{margin:4px 0}
+section{display:flex;flex-direction:column;gap:14px}
+section > h2{margin-bottom:-4px}
+
+/* ---- emitter stack: a list, drawn as one. No wires, so no graph. ---- */
+.stack-head{margin:0;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.emitter{font-family:var(--font-display);font-size:19px;font-weight:600}
+.emitter-note{color:var(--ink-soft);font-size:13.5px}
+.stack{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-width:900px}
+.stack .stage{margin-top:14px}
+.stack .stage:first-child{margin-top:0}
+.stage-name{
+  display:inline-block;font-family:var(--font-display);
+  text-transform:uppercase;letter-spacing:.1em;font-size:11.5px;color:var(--accent);
+  border-bottom:1px solid var(--line);padding-bottom:5px;width:100%;
+}
+.module{
+  list-style:none;background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--line);border-radius:8px;padding:12px 16px;
+}
+.module.scratch{border-left-color:var(--accent)}
+.module.set{border-left-style:dashed}
+.module.empty{opacity:.5;text-align:center;padding:8px}
+.mod-name{font-weight:600;font-size:15.5px}
+.mod-note{color:var(--ink-soft);font-size:13px;margin-left:10px}
+.inputs{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+.inputs.nested{margin:4px 0 2px 18px;padding-left:12px;border-left:1px solid var(--line)}
+.inputs li{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;font-size:14px}
+.in-name{color:var(--ink-soft);min-width:16ch}
+.in-value{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:13px}
+.in-link{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:13px;color:var(--accent)}
+.in-link::before{content:"→ ";font-family:var(--font-ui)}
+
 .foot{color:var(--ink-soft);font-size:13.5px;border-top:1px solid var(--line);padding-top:20px}
 .foot a{color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -126,97 +162,85 @@ __BUE_CSS__
     <p class="dek">__DEK__</p>
 __CONTEXT_STRIP__  </header>
 
-  <div class="panel">
-    <div class="playground"></div>
-  </div>
-
-  <section>
-    <div class="src-head">
-      <div>
-        <h2>__PASTE_HEADING__</h2>
-        <p class="sub">__PASTE_SUB__</p>
-      </div>
-      <button id="copy" type="button">Select T3D</button>
-    </div>
-    <pre id="src">__T3D_ESCAPED__</pre>
-  </section>
-
+__SECTIONS__
   <p class="foot">Rendered with <a href="https://github.com/blueprintue/blueprintue-self-hosted-edition">bue-render</a> (MIT), embedded in full &mdash; this page makes no network requests.</p>
 </div>
-
-<textarea id="graph-source" hidden>__T3D_TEXTAREA__</textarea>
 
 <script>
 __BUE_JS__
 </script>
 
 <script>
-new window.blueprintUE.render.Main(
-  document.getElementById("graph-source").value,
-  document.querySelector(".playground"),
-  { height: "__PANEL_HEIGHT__" }
-).start();
+// A page can hold any number of graphs, so everything below works per panel rather than on the
+// one-and-only. Each graph panel carries its source in a sibling textarea.
+document.querySelectorAll(".panel[data-graph]").forEach((panel) => {
+  const source = document.getElementById(panel.dataset.graph);
+  const stage = panel.querySelector(".playground");
+  new window.blueprintUE.render.Main(source.value, stage, { height: panel.dataset.height }).start();
 
-// The renderer opens at 1:1 with the graph pinned to the top-left, so anything wider than
-// the frame hangs off the edge. Scale the canvas to the node bounding box once on load;
-// the toolbar's own zoom and pan take over from there.
-function fitGraphToFrame() {
-  const root = document.querySelector(".bue-render");
-  const frame = root?.querySelector(".frame");
-  const canvas = root?.querySelector(".canvas");
-  const nodes = [...(root?.querySelectorAll(".node") ?? [])];
-  // Nodes are built asynchronously after start(), so report back and let the caller retry.
-  if (!frame || !canvas || !nodes.length || !frame.clientWidth) return false;
+  // The renderer opens at 1:1 with the graph pinned to the top-left, so anything wider than the
+  // frame hangs off the edge. Scale the canvas to the node bounding box once on load; the
+  // toolbar's own zoom and pan take over from there.
+  const fit = () => {
+    const root = stage.querySelector(".bue-render") ?? panel.querySelector(".bue-render");
+    const frame = root?.querySelector(".frame");
+    const canvas = root?.querySelector(".canvas");
+    const nodes = [...(root?.querySelectorAll(".node") ?? [])];
+    // Nodes are built asynchronously after start(), so report back and let the caller retry.
+    if (!frame || !canvas || !nodes.length || !frame.clientWidth) return false;
 
-  // Undo the current pan/zoom to recover canvas-space coordinates.
-  const m = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
-  const scale0 = m.a || 1;
-  const view = frame.getBoundingClientRect();
-  const rects = nodes.map((n) => n.getBoundingClientRect());
-  const toCanvas = (v, origin, offset) => (v - origin - offset) / scale0;
-  const box = {
-    l: Math.min(...rects.map((r) => toCanvas(r.left, view.left, m.e))),
-    t: Math.min(...rects.map((r) => toCanvas(r.top, view.top, m.f))),
-    r: Math.max(...rects.map((r) => toCanvas(r.right, view.left, m.e))),
-    b: Math.max(...rects.map((r) => toCanvas(r.bottom, view.top, m.f))),
+    // Undo the current pan/zoom to recover canvas-space coordinates.
+    const m = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
+    const scale0 = m.a || 1;
+    const view = frame.getBoundingClientRect();
+    const rects = nodes.map((n) => n.getBoundingClientRect());
+    const toCanvas = (v, origin, offset) => (v - origin - offset) / scale0;
+    const box = {
+      l: Math.min(...rects.map((r) => toCanvas(r.left, view.left, m.e))),
+      t: Math.min(...rects.map((r) => toCanvas(r.top, view.top, m.f))),
+      r: Math.max(...rects.map((r) => toCanvas(r.right, view.left, m.e))),
+      b: Math.max(...rects.map((r) => toCanvas(r.bottom, view.top, m.f))),
+    };
+
+    // Wires bow outside the node boxes, so pad the bounds or the curves clip at the edges.
+    const pad = 70;
+    box.l -= pad; box.t -= pad; box.r += pad; box.b += pad;
+
+    const width = box.r - box.l, height = box.b - box.t;
+    if (!(width > 0 && height > 0)) return false;
+    const scale = Math.min(frame.clientWidth / width, frame.clientHeight / height, 1);
+    const x = (frame.clientWidth - width * scale) / 2 - box.l * scale;
+    const y = (frame.clientHeight - height * scale) / 2 - box.t * scale;
+    canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    return true;
   };
 
-  // Wires bow outside the node boxes, so pad the bounds or the curves clip at the edges.
-  const pad = 70;
-  box.l -= pad; box.t -= pad; box.r += pad; box.b += pad;
+  let attempts = 0;
+  const tryFit = () => { if (!fit() && ++attempts < 60) setTimeout(tryFit, 50); };
+  tryFit();
+  addEventListener("resize", fit);
+});
 
-  const width = box.r - box.l, height = box.b - box.t;
-  if (!(width > 0 && height > 0)) return false;
-  const scale = Math.min(frame.clientWidth / width, frame.clientHeight / height, 1);
-  const x = (frame.clientWidth - width * scale) / 2 - box.l * scale;
-  const y = (frame.clientHeight - height * scale) / 2 - box.t * scale;
-  canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-  return true;
-}
+// navigator.clipboard is not an option here: the artifact viewer frames this page cross-origin
+// with no Permissions Policy delegation, so clipboard-write is never granted and writeText()
+// always rejects. Selecting the block is not permission-gated and always works, so that is what
+// the button promises; execCommand may also land, and when it does the label upgrades itself.
+document.querySelectorAll("button[data-copies]").forEach((btn) => {
+  const src = document.getElementById(btn.dataset.copies);
+  btn.addEventListener("click", () => {
+    const range = document.createRange();
+    range.selectNodeContents(src);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
 
-let attempts = 0;
-const tryFit = () => { if (!fitGraphToFrame() && ++attempts < 60) setTimeout(tryFit, 50); };
-tryFit();
-addEventListener("resize", fitGraphToFrame);
+    let copied = false;
+    try { copied = document.execCommand("copy"); } catch { copied = false; }
 
-const btn = document.getElementById("copy");
-const src = document.getElementById("src");
-// navigator.clipboard is not an option here: the artifact viewer frames this page
-// cross-origin with no Permissions Policy delegation, so clipboard-write is never granted
-// and writeText() always rejects. Selecting the block is not permission-gated and always
-// works, so that is what the button promises; execCommand may also land, and when it does
-// the label upgrades itself.
-btn.addEventListener("click", () => {
-  const range = document.createRange();
-  range.selectNodeContents(src);
-  const selection = getSelection();
-  selection.removeAllRanges();
-  selection.addRange(range);
-
-  let copied = false;
-  try { copied = document.execCommand("copy"); } catch { copied = false; }
-
-  btn.textContent = copied ? "Copied" : "Selected — press Ctrl+C";
-  setTimeout(() => { btn.textContent = "Select T3D"; }, 6000);
+    const original = btn.dataset.label ?? btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = copied ? "Copied" : "Selected — press Ctrl+C";
+    setTimeout(() => { btn.textContent = original; }, 6000);
+  });
 });
 </script>
