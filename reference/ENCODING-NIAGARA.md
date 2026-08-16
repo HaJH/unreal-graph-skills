@@ -205,6 +205,14 @@ That looked like the one thing that could sink hand-authored payloads. It does n
   `Signature`, and the `OutputVars` of `If` / `Select` / `StaticSwitch`. A graph of
   Map Get → ops → Map Set does not touch it.
 
+**Core types are stable; enum types are not.** A second sweep of the same engine, in a later
+session, moved `ENiagaraVector4_Channels` from 147 to 177 and `ESplitScreenType` from 211 to 198,
+while every struct and data interface in the table stayed put. Enums register when something that
+uses them is loaded, so their index follows what the session happened to open. Anything that has
+to survive a session — and the whole stack clipboard qualifies — should carry a type **path**
+instead. `InputType` does exactly that, which is why the stack payload needs the registry only for
+the one property that still stores an index (`Linked`).
+
 Observed on UE 5.8:
 
 | Index | Type |
@@ -227,6 +235,12 @@ clipboard, but carrying `Functions` (and `Renderers`) instead of `ExportedNodes`
 stage and copying takes that stage's modules, in order.
 
 Read off real UE 5.8 copies of an emitter's stages.
+
+**Status.** `niagara/emit-stack-t3d.mjs` builds these, and its `SpawnBurst_Instantaneous` output
+is byte-identical to the capture below — `FunctionName`, `Script`, `ScriptVersion`, `InputName`,
+`InputType` and the `Local` bytes all agree. Unlike the graph payload it has **not** been round
+-tripped through a paste, because a stack paste needs a selected row in an open emitter and
+cannot be driven from script. Treat it as verified against a capture, not as proven end to end.
 
 ```
 Begin Object Class=/Script/NiagaraEditor.NiagaraClipboardContent Name="NiagaraClipboardContent_18" ExportPath="…"
@@ -256,9 +270,14 @@ End Object
 |---|---|
 | `FunctionName` | The instance name in the stack. A Set Variables row reads `SetVariables_<GUID>`. |
 | `Script` | A **plain** asset path, not wrapped in `Class'…'` — unlike `FunctionScript` on a graph node. |
-| `ScriptVersion` | A GUID; absent on some modules. |
+| `ScriptVersion` | The version the stack row is pinned to — `UNiagaraNodeFunctionCall::SelectedScriptVersion`. Absent on an unversioned module, because the GUID is then invalid and equal to its default. |
 | `Inputs(N)` | Name-only references to the input objects, with no outer qualification. |
 | `ScriptMode=Assignment` | A Set Variables row. It then carries `AssignmentTargets(0)=(Name="Particles.LastPulseTime",TypeDefHandle=(RegisteredTypeIndex=99))` and `AssignmentDefaults(0)=""`, and **no** `Script`. |
+
+`ScriptVersion` is derivable rather than transcribable: the capture of `SpawnBurst_Instantaneous`
+carries `2BF981484C8C7D22B0E909BBFE8AAC7D`, which is that asset's own `ExposedVersion`. A row
+added to a stack today takes the exposed version, so writing it from the asset reproduces what
+the editor writes — `niagara/emit-stack-t3d.mjs` does, and the two agree byte for byte.
 
 A scratch pad module points into the owning system as a subobject:
 `Script="/Game/…/NS_AimIndicator.NS_AimIndicator:ScratchModule"`.
@@ -270,9 +289,51 @@ A scratch pad module points into the owning system as a subobject:
 | `InputName` | The stack row's label. |
 | `InputType` | `(ClassStructOrEnum="<wrapper>'<path>'",UnderlyingType=N)` — **path-based, so portable**, unlike the graph side's registry index. `UnderlyingType` is 1 for a data interface (Class), 2 for a struct, 3 for an enum. |
 | `ValueMode` | Absent means `Local`. `Linked` adds `Linked=(Name="Engine.DeltaTime",TypeDefHandle=(RegisteredTypeIndex=99))` — the one place here that still needs an index. |
-| `Local(N)=<byte>` | The value, **one array element per line**, little-endian. A bool reads `255,255,255,255` for true and `0,0,0,0` for false. |
+| `Local(N)=<byte>` | The value, **one array element per line**, little-endian. A bool reads `255,255,255,255` for true and `0,0,0,0` for false. An enum is an int32 holding the enumerator's value. |
 | `bHasEditCondition` | Present on inputs gated by another input. |
-| `ChildrenInputs(N)` | Sub-inputs of a mode, nested as their own objects — how `Lifetime Mode` carries `Lifetime`. |
+| `ChildrenInputs(N)` | Sub-inputs of a mode, nested as their own objects — how `Lifetime Mode` carries `Lifetime`. The child's outer is the parent input (`UNiagaraStackFunctionInput::ToClipboardFunctionInput` passes it), so the nesting is real and not just a reference. |
+
+### An enum value is an ordinal, and the ordinal is not in the enum asset
+
+`Local` holds the number, so anything that writes a stack payload has to turn "Simulation
+Position" into 2 — and anything that draws one has to turn 2 back into "Simulation Position".
+Neither direction can be got from the enum asset alone.
+
+A `UserDefinedEnum` exports only
+
+```
+DisplayNameMap=(("NewEnumerator0", NSLOCTEXT(…, "Unset")), ("NewEnumerator1", …))
+```
+
+keyed by internal name, in the map's own order, which is creation order. Reordering entries in
+the enum editor moves them in `Names` without renaming them, and `Names` is not a `UPROPERTY`, so
+it never reaches the text export. `ENiagara_SizeScaleMode` proves the gap: its map reads *Unset,
+Random Uniform, Random Non-Uniform, Uniform, Non-Uniform*, while the dropdown reads *Unset,
+Uniform, Random Uniform, Non-Uniform, Random Non-Uniform*. Four of five values would land on the
+wrong mode.
+
+The order is recoverable from the **static switch and select nodes** that use the enum. Each
+writes one input pin per visible entry, in value order, named `<var> if <display name>` —
+`UNiagaraNodeStaticSwitch::GetOptionValues` walks the entries by index and `GetOptionPinName`
+labels each with `GetDisplayNameTextByValue`. The pins of one node therefore *are* the ordered
+label list, straight off the engine's own code path and joined inside a single node.
+
+Three things keep that honest, and `niagara/generate-enums.mjs` enforces all three:
+
+- a node caches its pin names from when they were last allocated, so a stale node can carry
+  labels the enum no longer uses. A witness counts only if its label set matches the asset's
+  current `DisplayNameMap` — `ENiagaraChannelCorrelation` has exactly one stale witness against
+  six fresh ones.
+- where several nodes witness one enum they must agree, or the enum is dropped.
+- an enum nothing switches on is left out rather than guessed at.
+
+Across 771 assets and 162 witnessed enums there was not one order disagreement, and the naive
+map order would have been wrong for 15. Where ground truth exists it agrees: `ENiagaraSimTarget`
+and `ESplitScreenType` are `BlueprintType` C++ enums, so Unreal's Python API can enumerate them,
+and both come back exactly as witnessed — including all twelve of `ESplitScreenType`, in order.
+
+Note the pin name uses `FTextInspector::GetSourceString`, so it is the non-localised source text.
+That is what the editor draws in English and what a payload should be written against.
 
 ### Renderers
 
@@ -296,12 +357,55 @@ Cross-references inside the wrapper are qualified by the outer object
 
 ### Pasting one
 
-Paste is a **replay**, not an import: the editor adds each module to the stack for real and
-applies inputs by name and type, silently skipping what does not match. So a payload that names
-an input wrongly fails quietly in the editor — which is the argument for validating a spec
-against the module's input table at build time instead.
+Paste is a **replay**, not an import. `UNiagaraStackScriptHierarchyRoot::SetValuesFromClipboard-
+FunctionInputs` walks the target stack's own rows and applies a clipboard input only where
+
+```cpp
+StackFunctionInput->GetInputParameterHandle().GetName() == ClipboardFunctionInput->InputName
+&& StackFunctionInput->GetInputType() == ClipboardFunctionInput->InputType
+```
+
+and does nothing at all otherwise. A misspelled input name, or the right name at the wrong type,
+produces a payload that pastes without a murmur and leaves that row at its default — nothing
+downstream can notice. That is the whole argument for validating a spec against the module's
+input table at build time, which `niagara/generate-modules.mjs` exists to make possible.
+
+Static switches are applied first and the categories refreshed before the ordinary inputs go in,
+because a switch can change which inputs exist at all.
 
 It also needs **exactly one selected row** in the target stack; a multi-selection is refused.
+
+The import side has no gate beyond the outer class: `FNiagaraClipboardContentTextObjectFactory::
+CanCreateClass` accepts `UNiagaraClipboardContent` and nothing else, with `bOmitSubObjs` left
+false so the nested objects are built.
+
+### Where a module's stack inputs live
+
+Two kinds of parameter on the module's own graph, both listed in the graph's
+`VariableToScriptVariable`:
+
+- `Module.<X>`, which the stack draws as `<X>` — `SpawnBurst_Instantaneous` keeps
+  `Module.Spawn Count`, and a real capture of it reads `InputName="Spawn Count"`.
+- static switch parameters, which carry no namespace and appear under their own name.
+
+Two traps in reading them:
+
+- **`VariableToScriptVariable` is a property of the graph, so a versioned asset has one per
+  version.** Taking whichever came first in the file loses inputs: `InheritVelocity` ships four
+  versions and the first is missing three of the exposed version's inputs. The same applies to
+  the graph itself — pick the source named by the `VersionData` entry whose `VersionGuid` matches
+  `ExposedVersion`, or `MultiplyTransforms` hands back `Scale A` at 0,0,0 where the live version
+  has 1,1,1, its change description reading "Set correct default value for scale inputs".
+- **A static switch with `SwitchConstant=` is set by the compiler, not by the stack**
+  (`IsSetByCompiler`). `GravityForce` has three nodes named `Coordinate Space` and only the first
+  is the real enum input; counting the others retypes it as a bool.
+
+`ModuleUsageBitmask`, on the same `VersionData` entry, is a bit per `ENiagaraScriptUsage` the
+module may be placed in. It is **not** how you tell a module from a function — `EmitterState` sets
+only the Emitter Update bit, with no kind bit at all; `UNiagaraScript::Usage` is. And it is often
+absent, because `FVersionedNiagaraScriptData` defaults it to the five particle stages and Unreal
+omits a property equal to its default. Reading absence as "unknown" silently drops the stage check
+for 54 of the 244 modules in the sweep.
 
 ## Reading a capture
 

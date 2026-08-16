@@ -13,6 +13,7 @@ import { join, dirname, resolve, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { renderStack } from "./lib/stack.mjs";
 import { renderProse } from "./lib/prose.mjs";
+import { emitStackT3D } from "./niagara/emit-stack-t3d.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (f) => readFileSync(join(here, f), "utf8");
@@ -93,7 +94,32 @@ for (const [i, section] of sections.entries()) {
   }
 
   if (section.type === "stack") {
-    parts.push(`  <section>\n${heading}${body}${renderStack(section)}  </section>`);
+    // A stack section draws by default and only emits paste payloads when it asks to, because
+    // the two want different things from a spec. A picture is happy with "Spawn Count:
+    // MaxTrajectoryCount × SegmentsPerTrajectory"; a payload needs a number. Opting in is what
+    // turns every module name, input name, type and value into something the build checks.
+    const pastes = (section.stages ?? []).map((stage, n) => {
+      const t3d = section.paste ? emitStackT3D(stage) : null;
+      if (!t3d) return null;
+      const id = `stack-${i}-${n}`;
+      stats.push({
+        label: `${section.emitter ?? "stack"} — ${stage.stage}`,
+        modules: (stage.modules ?? []).length,
+        inputs: (t3d.match(/^\s*InputName=/gm) ?? []).length,
+      });
+      // Each payload sits under its own stage, so "this stage" is unambiguous without repeating
+      // the stage name in the heading.
+      return `          <div class="src-head">
+            <div>
+              <h3>Paste this stage</h3>
+              <p class="sub">Select exactly one row in this stage of the target emitter &mdash; a
+              multi-selection is refused &mdash; then press Ctrl+V.</p>
+            </div>
+            <button type="button" data-copies="${id}">Select T3D</button>
+          </div>
+          <pre id="${id}">${esc(t3d)}</pre>`;
+    });
+    parts.push(`  <section>\n${heading}${body}${renderStack(section, pastes)}  </section>`);
     continue;
   }
 
@@ -166,5 +192,9 @@ html = put(html, "__BUE_JS__", read("vendor/bue-render.js"));
 writeFileSync(outPath, html);
 
 console.log(`${outPath}  ${Math.round(Buffer.byteLength(html) / 1024)} KB`);
-for (const s of stats) console.log(`  ${s.nodes} nodes, ${s.pins} pins, ${s.wires} wires — ${s.label}`);
+for (const s of stats) {
+  console.log(s.modules === undefined
+    ? `  ${s.nodes} nodes, ${s.pins} pins, ${s.wires} wires — ${s.label}`
+    : `  ${s.modules} modules, ${s.inputs} inputs — ${s.label}`);
+}
 if (!stats.length) console.log(`  ${sections.length} section(s), no graphs`);

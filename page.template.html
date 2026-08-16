@@ -145,6 +145,12 @@ section > h2{margin-bottom:-4px}
 .in-link{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:13px;color:var(--accent)}
 .in-link::before{content:"→ ";font-family:var(--font-ui)}
 
+/* A stage's paste payload, directly under the modules it carries rather than collected at the
+   foot of the page — one payload is one stage, and that only reads if it sits with the stage. */
+.stage-paste{list-style:none;margin:8px 0 2px}
+.stage-paste h3{font-size:15px}
+.stage-paste pre{max-height:220px}
+
 .foot{color:var(--ink-soft);font-size:13.5px;border-top:1px solid var(--line);padding-top:20px}
 .foot a{color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

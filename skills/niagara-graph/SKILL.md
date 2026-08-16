@@ -17,10 +17,10 @@ reader gets a picture *and* the real nodes — and never has to be told which pi
 Use it when describing a Niagara **script graph** of three or more connected nodes — scratch
 pad modules, module scripts, dynamic inputs, function scripts.
 
+It also draws the emitter **stack**, as a list rather than a graph, and can emit the clipboard
+payload for each stage — see [Build guides](#build-guides--more-than-one-section).
+
 Do **not** use it for:
-- the emitter **stack** (which modules run in which stage, and their input values). That is a
-  list, not a graph — a markdown tree says it better, and the renderer cannot draw it. Set
-  `stage` on a spec to show where a module plugs in; that is as far as this skill goes.
 - design questions — which emitters to split, when to use a data interface, performance. That
   is `vfx-material-advisor`.
 - material graphs — that is the sibling skill, `material-graph`.
@@ -138,7 +138,7 @@ Array Float3.
   in: { Age: "get:Particles.NormalizedAge", Sharpness: "get:Module.Sharpness" } }
 ```
 
-**777 function scripts, generated from the assets.** A `FunctionCall` names the asset and
+**771 function scripts, generated from the assets.** A `FunctionCall` names the asset and
 nothing else — its pins come from `niagara/ue-niagara-functions.mjs`:
 
 ```js
@@ -169,15 +169,19 @@ Pin defaults are the **function's own**, decoded from the variable's stored byte
 node niagara/generate-ops.mjs /path/to/UE_5.8          # operators, from engine C++
 ```
 
-Function scripts need one editor step first, because their pins live in the assets:
+Everything else lives in the assets, so it needs one editor step first — about 15 seconds for
+roughly 950 assets — and then three offline passes over the same export:
 
 ```
 # in Unreal:  exec(open('<plugin>/niagara/export-functions.py').read())
-node niagara/generate-functions.mjs <export dir>       # functions + the type-index map
+node niagara/generate-functions.mjs <export dir>       # function-call pins + the type-index map
+node niagara/generate-modules.mjs   <export dir>       # module stack inputs, for the stack payload
+node niagara/generate-enums.mjs     <export dir>       # enumerator display names
 ```
 
-Run it when moving engine version. An op whose pins the parser cannot resolve is left out and
-named in the generated file's header, so a gap reads as a known gap.
+Run all four when moving engine version. Each leaves out what it cannot resolve and says so:
+an op whose pins the parser cannot read, a module parameter with no type path in its own graph,
+an enum nothing switches on. A gap reads as a known gap rather than a plausible wrong value.
 
 **Type indices are generated too.** `niagara/ue-niagara-type-index.mjs` is recovered by the
 same sweep, by correlating each Input node's stated index with its own pin's type path.
@@ -211,10 +215,43 @@ Same `build.mjs`, same publish step. `reference/BUILD-GUIDES.md` has the section
 stack spec, and how to read a stack off a shipped system instead of transcribing it.
 `examples/guides/projectile-trajectory.spec.mjs` is a worked one — stack, scratch pad graph and the ribbon material in one page.
 
+### A stack you can paste back
+
+A stack section with `paste: true` emits the emitter-stack clipboard T3D for each stage, drawn
+under that stage. The reader selects one row in that stage and presses Ctrl+V.
+
+The value is the checking, not the payload. A stack paste is a replay that matches inputs by name
+**and** type and silently skips everything else, so a mistyped input name produces a payload that
+pastes cleanly and leaves the row at its default, with nothing downstream able to notice. Opting
+in checks every module name (against 244 modules swept from the assets), every input name and
+type, every value, and whether the module is even allowed in that stage — and fails the build with
+the module's real input list instead.
+
+```js
+{ type: "stack", emitter: "NS_SparkBurst", paste: true, stages: [
+  { stage: "Emitter Update", modules: [
+    { module: "Emitter State", inputs: [["Life Cycle Mode", "Self"], ["Loop Duration", 1.0]] },
+  ] },
+] }
+```
+
+Enum inputs are written by the name the editor shows (`"Self"`, `"Simulation Position"`) and
+encoded to the ordinal; an ordinal written directly is drawn as the name. `examples/guides/spark-burst.spec.mjs`
+is a worked one. Renderers are out of scope — a Render row draws but carries no payload.
+
 ## Known limits
 
-- **The emitter stack is out of scope.** Copying an emitter is not possible even in the editor —
-  an overview node carries only a system pointer and a handle GUID, not the emitter.
+- **A whole emitter cannot be copied**, even in the editor — an overview node carries only a
+  system pointer and a handle GUID. A stack payload is per *stage*, which is what a real copy
+  contains and what a paste expects.
+- **The stack payload is verified against a capture, not round-tripped.** Its
+  `SpawnBurst_Instantaneous` output is byte-identical to a real UE 5.8 copy, but a stack paste
+  needs a selected row in an open emitter and cannot be driven from script, so it has not been
+  proven end to end the way the graph payload has.
+- **Renderers carry no payload.** The clipboard puts the whole `UNiagaraRendererProperties`
+  object in a separate array, with no name-and-type table to check a spec against.
+- **Seven enums used by module inputs have no label table**, because nothing in the sweep
+  switches on them. Those inputs take an ordinal instead, and the build says so by name.
 - **Output nodes cannot be pasted.** `UNiagaraNodeOutput::CanDuplicateNode()` is false, so a
   real copy never contains one and a payload must not either.
 - **Script variable metadata is omitted.** Parameter descriptions and default values are carried
@@ -244,13 +281,19 @@ Paths are relative to the **plugin root** — two levels up from this file.
 |---|---|
 | `build.mjs` | CLI: spec → self-contained HTML, for both domains |
 | `niagara/emit-t3d.mjs` | spec → inner node T3D → Base64 → clipboard wrapper |
+| `niagara/emit-stack-t3d.mjs` | one stage of a stack spec → clipboard T3D, validated against the module table |
 | `niagara/niagara-nodes.mjs` | the structural node table |
 | `niagara/types.mjs` | type paths and the registry indices |
 | `niagara/ue-niagara-ops.mjs` | generated operator table |
 | `niagara/generate-ops.mjs` | regenerates it from an installed engine |
+| `niagara/export-functions.py` | editor step: exports script and enum assets to T3D |
+| `niagara/sweep.mjs` | shared reading of that export — encoding, exposed version, object bodies |
 | `niagara/ue-niagara-functions.mjs` | generated function-call pin table |
-| `niagara/export-functions.py` | editor step: exports script assets to T3D |
-| `niagara/generate-functions.mjs` | parses that export into the table and the type-index map |
+| `niagara/generate-functions.mjs` | parses the export into that table and the type-index map |
+| `niagara/ue-niagara-modules.mjs` | generated module stack-input table, with usage bitmask and version |
+| `niagara/generate-modules.mjs` | parses the export into it |
+| `niagara/ue-niagara-enums.mjs` | generated enumerator labels, in value order |
+| `niagara/generate-enums.mjs` | recovers that order from static switch / select pins |
 | `niagara/asset-names.mjs` | last-resort FName dump from a .uasset |
 | `niagara/read-stack.mjs` | reads an emitter's stack out of an exported system, as a spec fragment |
 | `lib/` | layout, GUIDs, and the guide section renderers — shared with `material-graph` |

@@ -108,6 +108,13 @@ wires. [`reference/BUILD-GUIDES.md`](reference/BUILD-GUIDES.md) has the section 
 stack spec, and `niagara/read-stack.mjs` reads a stack straight out of an exported system so a
 guide starts from what shipped rather than from a transcription.
 
+Add `paste: true` and each stage also carries the clipboard T3D for its own modules, so the
+emitter can be rebuilt a stage at a time. The point is the checking rather than the payload: a
+stack paste matches inputs by name **and** type and silently skips the rest, so a mistyped input
+name would paste cleanly and leave the row at its default with nothing able to notice. Opting in
+checks every module name, input name, type and value against tables swept out of the engine's own
+assets, and fails the build with the module's real input list instead.
+
 ## Writing a spec
 
 `in` maps **pin name → source**. A material spec taps a named output with `"node.PinName"`; a
@@ -164,17 +171,29 @@ node niagara/generate-ops.mjs /path/to/UE_5.8
 
 An op the parser cannot resolve is listed in the generated file's header rather than guessed at.
 
-**777 function scripts, generated from the assets.** A `FunctionCall` names an asset and its pins
+**771 function scripts, generated from the assets.** A `FunctionCall` names an asset and its pins
 come from the table, so a spec never lists them. Operators live in one engine C++ file, but a
 function's pins live in its own `.uasset` — so that table is built by exporting the assets from
 the editor once and parsing the export offline:
 
 ```
 # in Unreal:  exec(open('<plugin>/niagara/export-functions.py').read())
-node niagara/generate-functions.mjs <export dir>
+node niagara/generate-functions.mjs <export dir>       # function-call pins + the type-index map
+node niagara/generate-modules.mjs   <export dir>       # 244 modules' stack inputs
+node niagara/generate-enums.mjs     <export dir>       # 160 enums' labels, in value order
 ```
 
-The same sweep recovers the runtime type-index map that `FNiagaraVariable` needs.
+One editor step, three offline passes over the same export. The module table is what a stack
+payload is validated against; the enum table is what turns `Position Mode: 2` into
+`Simulation Position` and back.
+
+That last one is not as simple as reading the enum asset. A `UserDefinedEnum` exports its labels
+keyed by internal name in *creation* order, and reordering entries in the editor moves them
+without renaming them — `ENiagara_SizeScaleMode` would map four of its five values to the wrong
+mode. The order is instead read off the static switch and select nodes that use the enum, whose
+option pins the engine builds by walking the enum by value. Stale witnesses are rejected against
+the asset's current labels, disagreeing ones drop the enum entirely, and where ground truth
+exists (`ESplitScreenType`, via Unreal's Python API) it matches exactly.
 
 [`reference/ENCODING.md`](reference/ENCODING.md) and
 [`reference/ENCODING-NIAGARA.md`](reference/ENCODING-NIAGARA.md) document the two serialisation

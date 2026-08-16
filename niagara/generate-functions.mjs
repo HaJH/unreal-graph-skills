@@ -6,9 +6,10 @@
 // A function call's pins are the called script's own exposed inputs, in CallSortPriority order,
 // plus its output node's variables. Unlike operators, that lives in each asset rather than in
 // one engine header -- hence the export step. Everything after it is text parsing.
-import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { writeFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readText, exposedVersion, packagePath, blocks, byCallOrder } from "./sweep.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dir = process.argv[2];
@@ -16,40 +17,6 @@ if (!dir) {
   console.error("usage: node niagara/generate-functions.mjs <export dir>");
   process.exit(1);
 }
-
-// The exporter writes UTF-16LE whenever the asset holds a character that codepage cannot avoid —
-// a Korean comment in a Custom HLSL node is enough. Reading those as UTF-8 yields text that
-// matches nothing, so the asset silently contributes no functions. Honour the BOM.
-const readText = (file) => {
-  const buf = readFileSync(file);
-  if (buf[0] === 0xFF && buf[1] === 0xFE) return buf.subarray(2).toString("utf16le");
-  if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) return buf.subarray(3).toString("utf8");
-  return buf.toString("utf8");
-};
-
-// An asset holds one script source per version; every one repeats the whole graph, so scope to
-// the first or every input comes out two or three times over.
-const firstGraph = (text) => {
-  const marker = /NiagaraScriptSource_(\d+)\.NiagaraGraph_0/;
-  const m = text.match(marker);
-  return m ? `NiagaraScriptSource_${m[1]}.NiagaraGraph_0` : null;
-};
-
-// `Begin Object Name="X" ExportPath="…"` down to the next `Begin Object` or `End Object` at the
-// same indent. Cheap and good enough: the properties we want sit directly under the header.
-const blocks = (text, graph) => {
-  const out = [];
-  const lines = text.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const head = lines[i].match(/^\s*Begin Object Name="([^"]+)" ExportPath="([^"]*)"/);
-    if (!head || !head[2].includes(graph)) continue;
-    const cls = head[2].match(/^\/Script\/NiagaraEditor\.(\w+)/)?.[1];
-    const body = [];
-    for (let j = i + 1; j < lines.length && !/^\s*(Begin|End) Object/.test(lines[j]); j++) body.push(lines[j]);
-    out.push({ name: head[1], cls, body: body.join("\n") });
-  }
-  return out;
-};
 
 const variable = (s) => {
   const name = s.match(/Name="([^"]*)"/)?.[1];
@@ -113,14 +80,11 @@ let skipped = 0;
 
 for (const file of readdirSync(dir).filter((f) => f.toUpperCase().endsWith(".T3D"))) {
   const text = readText(join(dir, file));
-  const graph = firstGraph(text);
+  const graph = exposedVersion(text)?.graph;
   if (!graph) { skipped++; continue; }
   scanned++;
 
-  const path = text.match(/ExportPath="\/Script\/NiagaraEditor\.NiagaraGraph'([^:]+):/)?.[1]
-    ?? file.replace(/\.T3D$/i, "").split("__").join("/").replace(/^/, "/");
-  // "/Niagara/Functions/Rotation/LerpQuaternion.LerpQuaternion" -> package path only.
-  const pkg = path.replace(/\.[^./]+$/, "");
+  const pkg = packagePath(text, file);
 
   const ins = [];
   const outs = [];
@@ -167,7 +131,7 @@ for (const file of readdirSync(dir).filter((f) => f.toUpperCase().endsWith(".T3D
   }
 
   if (!ins.length && !outs.length) continue;
-  ins.sort((a, b) => a.priority - b.priority);
+  ins.sort(byCallOrder);
   // A duplicate name means two versions leaked in despite the graph filter; keep the first.
   const dedupe = (list) => list.filter((v, i) => list.findIndex((o) => o.name === v.name) === i);
   functions[pkg] = { in: dedupe(ins).map(({ name, index, data }) => ({ name, index, data })), out: dedupe(outs) };

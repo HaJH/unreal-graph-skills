@@ -67,6 +67,56 @@ tree rather than sent through the graph renderer.
 - An input is `["Name", value]`. A `{ link: "Particles.X" }` value draws as an arrow in the
   accent colour so a binding never reads as a literal. `"-> Particles.X"` is shorthand for the
   same. `children` nests sub-inputs, the way a mode with its own value does in the editor.
+- An **enum input written as its ordinal is drawn as the name the editor draws** — `2` on
+  `Position Mode` comes out as `Simulation Position`. That comes from a generated table, so an
+  enum the sweep never saw is left as the number rather than relabelled on a guess.
+
+### `paste: true` — a stack you can put back
+
+Add `paste: true` to a stack section and each stage gains the clipboard T3D for its own modules,
+drawn under that stage. Select one row in that stage of the target emitter and press Ctrl+V.
+
+Opting in is what turns the section from a picture into a payload, and the two want different
+things from a spec. A picture is happy with `["Spawn Count", "MaxTrajectoryCount ×
+SegmentsPerTrajectory"]`; a payload needs a number. So a section without `paste` draws exactly as
+before, and a section with it is checked to the letter:
+
+- every module name must resolve to exactly one asset,
+- every input name must exist on that module,
+- every value must encode to that input's type,
+- and the module must be allowed in the stage it is written under.
+
+Any of those fails the build with the module's real input list, rather than emitting something
+that pastes cleanly and quietly does nothing. That is not caution for its own sake: a paste is a
+replay that matches inputs by name **and** type and silently skips the rest, so a typo is
+invisible at every point after the build.
+
+```js
+{
+  type: "stack", emitter: "NS_SparkBurst", paste: true,
+  stages: [
+    { stage: "Emitter Update", modules: [
+      { module: "Emitter State", inputs: [
+        ["Life Cycle Mode", "Self"],          // an enum, by the name the editor shows
+        ["Loop Duration", 1.0],
+      ] },
+      // "Initialize Particle" names two assets — the original and the V2 rewrite — so this row
+      // says which. The build lists both rather than picking.
+      { script: "/Niagara/Modules/Spawn/Initialization/V2/InitializeParticle",
+        module: "Initialize Particle", inputs: [["Lifetime Min", 0.4]] },
+      // A Set Variables row writes a parameter rather than calling a script, and the type it
+      // writes is the one thing no table can supply.
+      { set: "Particles.LastPulseTime", types: { "Particles.LastPulseTime": "float" } },
+    ] },
+  ],
+}
+```
+
+`examples/guides/spark-burst.spec.mjs` is a worked one: three stages, all three pasteable.
+
+**Renderers are out of scope.** A Render row draws, but never carries a payload — the clipboard
+puts the whole `UNiagaraRendererProperties` object in a separate `Renderers` array, and there is
+no name-and-type table to check it against.
 
 ### Reading a stack off a real system
 
