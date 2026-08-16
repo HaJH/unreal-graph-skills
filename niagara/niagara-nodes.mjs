@@ -5,6 +5,7 @@
 // by hand because their pins are not fixed by class at all -- a Map Get's pins ARE the
 // parameters the spec asks for, the way a material Custom node's pins are its declared inputs.
 import { OPS } from "./ue-niagara-ops.mjs";
+import { FUNCTIONS } from "./ue-niagara-functions.mjs";
 import { typeOf } from "./types.mjs";
 
 // A parameter entry is ["Particles.Age", "float"]; a bare string means float.
@@ -98,24 +99,34 @@ export const NODES = {
     props: (n) => [`OpName="${n.op}"`],
   },
 
-  // Calls a module, dynamic input or function script asset. Its pins come from the asset, so
-  // the spec states them -- the same bargain material-graph strikes for MaterialFunctionCall.
-  // Pin names are the called script's own input names, spaces and all ("Quat A", "Lerp Factor"),
-  // with no namespace prefix.
+  // Calls a module, dynamic input or function script asset. Pin names are the called script's
+  // own input names, spaces and all ("Quat A", "Lerp Factor"), with no namespace prefix -- and
+  // since they live in each asset rather than in one header, they are swept out of the assets
+  // ahead of time rather than restated in every spec.
   FunctionCall: {
     class: "NiagaraNodeFunctionCall",
-    pins: (n) => [
-      ...(n.inputs ?? []).map((p) => {
-        const [name, type] = param(p);
-        return { name, dir: "in", type };
-      }),
-      ...(n.outputs ?? []).map((p) => {
-        const [name, type] = param(p);
+    pins: (n) => {
+      // Pins come from the generated table, so a spec only names the asset. `inputs`/`outputs`
+      // stay as an override for a script the sweep has not seen -- a new project module, say.
+      const known = FUNCTIONS[n.function];
+      if (!known && !(n.inputs || n.outputs)) {
+        throw new Error(
+          `no pin table for function "${n.function}".\n`
+          + "Either regenerate it (niagara/export-functions.py, then generate-functions.mjs) "
+          + "or state `inputs` and `outputs` on the node.",
+        );
+      }
+      const listed = (specced, table, dir) => (specced
+        ? specced.map((p) => { const [name, type] = param(p); return { name, dir, type }; })
+        : table.map((p) => ({ name: p.name, dir, type: { struct: p.struct, wrapper: p.wrapper } })));
+
+      return [
+        ...listed(n.inputs, known?.in ?? [], "in"),
         // A function call's outputs are filled by the call, so the editor marks their defaults
         // ignored -- the one place a pin flag differs from every other node.
-        return { name, dir: "out", type, defaultIgnored: true };
-      }),
-    ],
+        ...listed(n.outputs, known?.out ?? [], "out").map((p) => ({ ...p, defaultIgnored: true })),
+      ];
+    },
     props: (n) => {
       if (!n.function) throw new Error(`FunctionCall "${n.id}" needs a \`function\` asset path`);
       const short = n.function.split("/").pop();

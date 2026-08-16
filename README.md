@@ -140,6 +140,18 @@ node niagara/generate-ops.mjs /path/to/UE_5.8
 
 An op the parser cannot resolve is listed in the generated file's header rather than guessed at.
 
+**777 function scripts, generated from the assets.** A `FunctionCall` names an asset and its pins
+come from the table, so a spec never lists them. Operators live in one engine C++ file, but a
+function's pins live in its own `.uasset` — so that table is built by exporting the assets from
+the editor once and parsing the export offline:
+
+```
+# in Unreal:  exec(open('<plugin>/niagara/export-functions.py').read())
+node niagara/generate-functions.mjs <export dir>
+```
+
+The same sweep recovers the runtime type-index map that `FNiagaraVariable` needs.
+
 [`reference/ENCODING.md`](reference/ENCODING.md) and
 [`reference/ENCODING-NIAGARA.md`](reference/ENCODING-NIAGARA.md) document the two serialisation
 formats, both verified against real editor copies.

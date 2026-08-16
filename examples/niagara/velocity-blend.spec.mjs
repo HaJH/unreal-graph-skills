@@ -28,8 +28,6 @@ export default {
     // Normalised lerp keeps the blend on the unit sphere, so speed comes from Scale alone.
     { id: "blend", type: "FunctionCall",
       function: "/Niagara/Functions/Math/Nlerp_Function",
-      inputs: [["Vector A", "vec3"], ["Vector B", "vec3"], ["Alpha", "float"], ["Scale", "float"]],
-      outputs: [["Ouput", "vec3"]],
       in: {
         "Vector A": "get:Particles.Velocity",
         "Vector B": "get:Module.TargetDirection",

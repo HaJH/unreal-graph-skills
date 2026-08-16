@@ -115,48 +115,51 @@ engine's own. Grep it when unsure — each entry lists its pins verbatim. Names 
   in: { Age: "get:Particles.NormalizedAge", Sharpness: "get:Module.Sharpness" } }
 ```
 
-`FunctionCall` takes its pins from the asset it points at, so the spec states them:
+**777 function scripts, generated from the assets.** A `FunctionCall` names the asset and
+nothing else — its pins come from `niagara/ue-niagara-functions.mjs`:
 
 ```js
 { id: "slerp", type: "FunctionCall",
   function: "/Niagara/Functions/Rotation/LerpQuaternion",
-  inputs: [["Quat A", "quat"], ["Quat B", "quat"], ["Lerp Factor", "float"]],
-  outputs: [["Quaternion", "quat"]],
   in: { "Quat A": "from", "Quat B": "to", "Lerp Factor": "t" } }
 ```
 
-**Pin names are the called script's own input names, verbatim** — spaces included, no namespace
-prefix (verified against a real UE 5.8 copy). They are whatever the asset's author typed, so do
-not derive them from the asset name, and do not assume they are tidy.
+Pin names are the called script's own input names, verbatim — spaces included, no namespace
+prefix, and whatever the asset's author typed. Grep the table for the asset path to see them;
+guessing from the asset name does not work.
 
-**Listing them by hand does not scale, and this is the weak part of the skill.** There is no
-generated table for function scripts the way there is for operators: an op's signature lives in
-one engine C++ file, a function's lives in its own `.uasset`. Until there is one, get the names
-from the thing itself:
+An unknown asset fails the build with instructions rather than emitting a wrong node. Declare
+`inputs`/`outputs` by hand to override the table — the escape hatch for a script written since
+the last sweep:
 
+```js
+{ id: "call", type: "FunctionCall", function: "/Game/VFX/Scripts/NM_MyModule",
+  inputs: [["Amount", "float"]], outputs: [["Result", "float"]] }
 ```
-node niagara/asset-names.mjs <path/to/Script.uasset> [filter]
-```
 
-That dumps every FName in the package — a shortlist to recognise, not an authority on order or
-direction. The authority is a real copy of the node out of the editor.
-
-Two things soften it. `CachedChangeId` is deliberately left unset, so Niagara treats the node as
-stale and rebuilds its pins from the asset — a spec that gets a name slightly wrong heals on
-paste rather than arriving broken. And a graph whose point is the surrounding maths reads fine
-with the call drawn as a single node, so reach for `FunctionCall` when the call *is* the point,
-not to be exhaustive.
+Pin defaults come from the **type**, not from the function's own default value, which the sweep
+does not carry. Wire the pin or state the value where that matters.
 
 ## Regenerating
 
 ```
-node niagara/generate-ops.mjs /path/to/UE_5.8
+node niagara/generate-ops.mjs /path/to/UE_5.8          # operators, from engine C++
+```
+
+Function scripts need one editor step first, because their pins live in the assets:
+
+```
+# in Unreal:  exec(open('<plugin>/niagara/export-functions.py').read())
+node niagara/generate-functions.mjs <export dir>       # functions + the type-index map
 ```
 
 Run it when moving engine version. An op whose pins the parser cannot resolve is left out and
 named in the generated file's header, so a gap reads as a known gap.
 
-**Type indices move with the engine version.** An `FNiagaraVariable` stores its type as a
+**Type indices are generated too.** `niagara/ue-niagara-type-index.mjs` is recovered by the
+same sweep, by correlating each Input node's stated index with its own pin's type path.
+
+**They move with the engine version.** An `FNiagaraVariable` stores its type as a
 runtime registry index and the T3D carries it verbatim. It is stable across editor restarts —
 verified by taking the same copy twice across a restart — but a UE 5.1 capture has
 `NiagaraParameterMap` at 69 where 5.8 has 95. Only `Input`, `CustomHlsl` and the
@@ -193,7 +196,10 @@ Paths are relative to the **plugin root** — two levels up from this file.
 | `niagara/types.mjs` | type paths and the registry indices |
 | `niagara/ue-niagara-ops.mjs` | generated operator table |
 | `niagara/generate-ops.mjs` | regenerates it from an installed engine |
-| `niagara/asset-names.mjs` | lists the FNames in a script .uasset, for FunctionCall pin names |
+| `niagara/ue-niagara-functions.mjs` | generated function-call pin table |
+| `niagara/export-functions.py` | editor step: exports script assets to T3D |
+| `niagara/generate-functions.mjs` | parses that export into the table and the type-index map |
+| `niagara/asset-names.mjs` | last-resort FName dump from a .uasset |
 | `lib/` | layout and GUIDs, shared with `material-graph` |
 | `page.template.html` | page shell, including the stage row |
 | `vendor/` | bue-render (MIT) — its Niagara support is upstream, not a local patch |
