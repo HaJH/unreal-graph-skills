@@ -148,6 +148,108 @@ export default {
     },
 
     {
+      type: "material",
+      heading: "M_ProjectileTrajectory — 리본 머티리얼",
+      material: "M_ProjectileTrajectory",
+      height: 900,
+      body: `리본의 UV를 받아 코어 글로우 · 흐르는 하이라이트 · 착탄 임박 플래시를 한 번에 합성한다.
+    계산은 Custom 노드 하나에 모여 있고, 그 결과 \`float2\`를 마스크로 갈라 Emissive와 Opacity로 보낸다.
+    튜닝 손잡이 7개는 전부 스칼라 파라미터라 MI에서 만진다.`,
+      layout: { laneColumns: 12 },
+
+      nodes: [
+        // --- 입력 ---
+        { id: "uv", type: "TextureCoordinate", block: "Inputs" },
+        { id: "dyn", type: "DynamicParameter", block: "Inputs" },
+        { id: "fillMask", type: "ComponentMask", block: "Inputs", in: { Input: "dyn.Output" },
+          props: { R: "True", G: "False", B: "False", A: "False" } },
+        { id: "declFill", type: "NamedRerouteDeclaration", name: "FillProgress", block: "Inputs",
+          in: { Input: "fillMask" } },
+
+        // --- MI 손잡이 ---
+        { id: "sweep", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "3.000000", ParameterName: '"SweepCount"' } },
+        { id: "baseOp", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "0.250000", ParameterName: '"BaseOpacity"' } },
+        { id: "flowW", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "0.150000", ParameterName: '"FlowWidth"' } },
+        { id: "core", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "1.500000", ParameterName: '"CoreGlow"' } },
+        { id: "impT", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "0.900000", ParameterName: '"ImpactThreshold"' } },
+        { id: "impB", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "0.200000", ParameterName: '"ImpactBoost"' } },
+        { id: "endFade", type: "ScalarParameter", block: "Tuning",
+          props: { DefaultValue: "0.400000", ParameterName: '"EndFadeStart"' } },
+
+        // --- 합성 ---
+        { id: "useFill", type: "NamedRerouteUsage", of: "FillProgress", block: "Composite" },
+        { id: "hlsl", type: "Custom", desc: "TrajectoryShape", outputType: "CMOT_Float2",
+          block: "Composite",
+          inputs: ["UV", "FillProgress", "SweepCount", "BaseOpacity", "FlowWidth",
+            "CoreGlow", "ImpactThreshold", "ImpactBoost", "EndFadeStart"],
+          code: [
+            "float U  = UV.x;                 // along the path: 0 at the socket, 1 at the impact",
+            "float V  = UV.y;                 // across the ribbon, 0..1",
+            "float pr = saturate(FillProgress);",
+            "",
+            "// core glow: brightest down the middle, transparent at the edges",
+            "float core = pow(1.0 - abs(V - 0.5) * 2.0, 2.0);",
+            "",
+            "// travelling highlight, accelerating and brightening with FillProgress",
+            "float flowPhase = frac(pr * pr * SweepCount);",
+            "float d    = frac(U - flowPhase);",
+            "float band = smoothstep(FlowWidth, 0.0, min(d, 1.0 - d));",
+            "float hi   = band * (0.5 + pr);",
+            "",
+            "// wash the whole ribbon just before impact",
+            "float impact = smoothstep(ImpactThreshold, 1.0, pr);",
+            "float reveal = max(hi, impact);",
+            "",
+            "float emissiveScalar = BaseOpacity + CoreGlow * core + reveal + impact * ImpactBoost;",
+            "float opacity = max(BaseOpacity, max(reveal, core * BaseOpacity));",
+            "float endFade = saturate((1.0 - U) / max(1.0 - EndFadeStart, 1e-4));",
+            "opacity *= endFade;",
+            "return float2(emissiveScalar, opacity);",
+          ].join("\n"),
+          in: {
+            UV: "uv", FillProgress: "useFill", SweepCount: "sweep", BaseOpacity: "baseOp",
+            FlowWidth: "flowW", CoreGlow: "core", ImpactThreshold: "impT",
+            ImpactBoost: "impB", EndFadeStart: "endFade",
+          } },
+
+        { id: "emMask", type: "ComponentMask", block: "Composite", in: { Input: "hlsl" },
+          props: { R: "True", G: "False", B: "False", A: "False" } },
+        { id: "opMask", type: "ComponentMask", block: "Composite", in: { Input: "hlsl" },
+          props: { R: "False", G: "True", B: "False", A: "False" } },
+        { id: "declEm", type: "NamedRerouteDeclaration", name: "EmissiveScalar", block: "Composite",
+          in: { Input: "emMask" } },
+        { id: "declOp", type: "NamedRerouteDeclaration", name: "Opacity", block: "Composite",
+          in: { Input: "opMask" } },
+
+        // --- 색 ---
+        { id: "flash", type: "VectorParameter", block: "Colour",
+          props: { ParameterName: '"FlashColor"' } },
+        { id: "declFlash", type: "NamedRerouteDeclaration", name: "FlashColor", block: "Colour",
+          in: { Input: "flash.RGB" } },
+        { id: "pcolor", type: "ParticleColor", block: "Colour" },
+        { id: "useEm", type: "NamedRerouteUsage", of: "EmissiveScalar", block: "Colour" },
+        { id: "tint", type: "Multiply", block: "Colour", in: { A: "pcolor.RGB", B: "useEm" } },
+        { id: "declEmOut", type: "NamedRerouteDeclaration", name: "EmissiveOutput", block: "Colour",
+          in: { Input: "tint" } },
+        { id: "useOp", type: "NamedRerouteUsage", of: "Opacity", block: "Colour" },
+        { id: "declOpOut", type: "NamedRerouteDeclaration", name: "OpacityOutput", block: "Colour",
+          in: { Input: "useOp" } },
+
+        // --- 출력 ---
+        { id: "useEmOut", type: "NamedRerouteUsage", of: "EmissiveOutput", block: "Output" },
+        { id: "useOpOut", type: "NamedRerouteUsage", of: "OpacityOutput", block: "Output" },
+        { id: "out", type: "MaterialOutput", block: "Output",
+          in: { "Emissive Color": "useEmOut", Opacity: "useOpOut" } },
+      ],
+    },
+
+    {
       type: "prose",
       heading: "함정",
       body: `- **\`Engine.Emitter.ExecutionIndex\`를 파티클 인덱스로 쓰지 말 것.** 단일 이미터에서는 항상 0이라 전 파티클이 배열[0]만 읽는다. 파티클별 인덱스는 \`Particles.ID.Index\`다
