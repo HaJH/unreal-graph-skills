@@ -44,7 +44,52 @@ const blocks = (text, graph) => {
 const variable = (s) => {
   const name = s.match(/Name="([^"]*)"/)?.[1];
   const index = Number(s.match(/RegisteredTypeIndex=(-?\d+)/)?.[1] ?? NaN);
-  return name && Number.isFinite(index) ? { name, index } : null;
+  // The variable's own value, as the raw little-endian bytes the editor stores.
+  const raw = s.match(/VarData=\(([^)]*)\)/)?.[1];
+  const data = raw ? raw.split(",").map(Number).filter((n) => Number.isInteger(n)) : null;
+  return name && Number.isFinite(index) ? { name, index, data } : null;
+};
+
+// How each type renders its inline value. Unreal has no single format: a float is fixed to six
+// places, a Vector2f is struct-style, everything else is comma-separated to three. These are the
+// forms observed in real copies -- see reference/ENCODING-NIAGARA.md.
+const floats = (b, n) => {
+  const view = new DataView(Uint8Array.from(b).buffer);
+  return Array.from({ length: n }, (_, i) => view.getFloat32(i * 4, true));
+};
+const ints = (b, n) => {
+  const view = new DataView(Uint8Array.from(b).buffer);
+  return Array.from({ length: n }, (_, i) => view.getInt32(i * 4, true));
+};
+const csv = (n, places = 3) => (b) => floats(b, n).map((v) => v.toFixed(places)).join(",");
+
+const FORMATS = {
+  "/Script/Niagara.NiagaraFloat": (b) => floats(b, 1)[0].toFixed(6),
+  "/Script/Niagara.NiagaraInt32": (b) => String(ints(b, 1)[0]),
+  "/Script/Niagara.NiagaraBool": (b) => (ints(b, 1)[0] === 0 ? "false" : "true"),
+  "/Script/Niagara.NiagaraPosition": csv(3),
+  "/Script/Niagara.NiagaraID": (b) => ints(b, 2).join(","),
+  "/Script/CoreUObject.Vector2f": (b) => {
+    const [x, y] = floats(b, 2);
+    return `X=${x.toFixed(3)} Y=${y.toFixed(3)}`;
+  },
+  "/Script/CoreUObject.Vector3f": csv(3),
+  "/Script/CoreUObject.Vector4f": csv(4),
+  "/Script/CoreUObject.Quat4f": csv(4),
+  "/Script/CoreUObject.LinearColor": csv(4),
+};
+
+// An enum is an int32 on the wire, whatever its path.
+const formatValue = (struct, wrapper, data) => {
+  if (!data?.length) return null;
+  const format = FORMATS[struct] ?? (wrapper?.endsWith("Enum") ? FORMATS["/Script/Niagara.NiagaraInt32"] : null);
+  if (!format) return null;
+  try {
+    const text = format(data);
+    return /NaN|Infinity/.test(text) ? null : text;
+  } catch {
+    return null;  // a byte count that does not match the type is not worth guessing at
+  }
 };
 
 // index -> type path, correlated from an Input node's own output pin: the node states the index,
@@ -96,14 +141,20 @@ for (const file of readdirSync(dir).filter((f) => f.toUpperCase().endsWith(".T3D
   ins.sort((a, b) => a.priority - b.priority);
   // A duplicate name means two versions leaked in despite the graph filter; keep the first.
   const dedupe = (list) => list.filter((v, i) => list.findIndex((o) => o.name === v.name) === i);
-  functions[pkg] = { in: dedupe(ins).map(({ name, index }) => ({ name, index })), out: dedupe(outs) };
+  functions[pkg] = { in: dedupe(ins).map(({ name, index, data }) => ({ name, index, data })), out: dedupe(outs) };
 }
 
 const typeName = (index) => typeIndex.get(index) ?? null;
 const wrapperOf = (index) => typeKind.get(index) ?? "/Script/CoreUObject.ScriptStruct";
 
 const entry = (pins) =>
-  `[${pins.map((p) => `{ name: ${JSON.stringify(p.name)}, struct: ${JSON.stringify(typeName(p.index) ?? `#${p.index}`)}, wrapper: ${JSON.stringify(wrapperOf(p.index))} }`).join(", ")}]`;
+  `[${pins.map((p) => {
+    const struct = typeName(p.index) ?? `#${p.index}`;
+    const wrapper = wrapperOf(p.index);
+    const def = formatValue(struct, wrapper, p.data);
+    return `{ name: ${JSON.stringify(p.name)}, struct: ${JSON.stringify(struct)}, `
+      + `wrapper: ${JSON.stringify(wrapper)}${def === null ? "" : `, def: ${JSON.stringify(def)}`} }`;
+  }).join(", ")}]`;
 
 const body = Object.keys(functions).sort()
   .map((k) => `  ${JSON.stringify(k)}: { in: ${entry(functions[k].in)}, out: ${entry(functions[k].out)} },`)

@@ -137,8 +137,8 @@ the last sweep:
   inputs: [["Amount", "float"]], outputs: [["Result", "float"]] }
 ```
 
-Pin defaults come from the **type**, not from the function's own default value, which the sweep
-does not carry. Wire the pin or state the value where that matters.
+Pin defaults are the **function's own**, decoded from the variable's stored bytes — so a call to
+`Nlerp_Function` arrives with `Scale` at 1.0 rather than at the type's zero.
 
 ## Regenerating
 

@@ -116,9 +116,14 @@ export const NODES = {
           + "or state `inputs` and `outputs` on the node.",
         );
       }
+      // `def` is the called script's own default, decoded from the variable's bytes — not the
+      // type's, which is why Nlerp_Function's Scale comes in at 1.0 rather than 0.
       const listed = (specced, table, dir) => (specced
         ? specced.map((p) => { const [name, type] = param(p); return { name, dir, type }; })
-        : table.map((p) => ({ name: p.name, dir, type: { struct: p.struct, wrapper: p.wrapper } })));
+        : table.map((p) => ({
+          name: p.name, dir, value: p.def,
+          type: { struct: p.struct, wrapper: p.wrapper },
+        })));
 
       return [
         ...listed(n.inputs, known?.in ?? [], "in"),
