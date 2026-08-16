@@ -13,20 +13,33 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = resolve(process.argv[2] ?? join(root, "_site"));
 mkdirSync(outDir, { recursive: true });
 
-const specs = readdirSync(join(root, "examples"))
-  .filter((f) => f.endsWith(".spec.mjs"))
+// examples/ is one directory per domain, so a page can say which editor it belongs to and the
+// index can group them.
+const domains = readdirSync(join(root, "examples"), { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => e.name)
   .sort();
+
+const specs = domains.flatMap((domain) =>
+  readdirSync(join(root, "examples", domain))
+    .filter((f) => f.endsWith(".spec.mjs"))
+    .sort()
+    .map((file) => ({ domain, file })));
 if (!specs.length) throw new Error("no specs in examples/");
 
 const built = [];
-for (const spec of specs) {
-  const name = basename(spec, ".spec.mjs");
+for (const { domain, file } of specs) {
+  const name = basename(file, ".spec.mjs");
   const out = join(outDir, `${name}.html`);
-  execFileSync(process.execPath, [join(root, "build.mjs"), join(root, "examples", spec), out], {
-    stdio: "inherit",
+  const specPath = join(root, "examples", domain, file);
+  execFileSync(process.execPath, [join(root, "build.mjs"), specPath, out], { stdio: "inherit" });
+  const { title, summary } = (await import(`file://${specPath}`)).default;
+  built.push({
+    name, domain,
+    title: title ?? name,
+    summary: summary ?? "",
+    kb: Math.round(statSync(out).size / 1024),
   });
-  const { title, summary } = (await import(`file://${join(root, "examples", spec)}`)).default;
-  built.push({ name, title: title ?? name, summary: summary ?? "", kb: Math.round(statSync(out).size / 1024) });
 }
 
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -35,7 +48,7 @@ const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/
 writeFileSync(join(outDir, "index.html"), `<!doctype html>
 <html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>unreal-material-graph-skill — examples</title>
+<title>unreal-graph-skills — examples</title>
 <style>
 :root{color-scheme:light dark;--ground:#f4f6f8;--surface:#fff;--ink:#151a22;--ink-soft:#5b6673;--line:#dee3ea;--accent:#c25f16}
 @media (prefers-color-scheme:dark){:root{--ground:#0e1117;--surface:#161b23;--ink:#e6eaf0;--ink-soft:#93a0b1;--line:#252c37;--accent:#f0913f}}
@@ -57,19 +70,19 @@ a.item:hover{background:var(--ground)}
 .foot a{color:var(--accent)}
 </style>
 <div class="wrap">
-  <p class="eyebrow">unreal-material-graph-skill</p>
+  <p class="eyebrow">unreal-graph-skills</p>
   <h1>Example graphs</h1>
   <p class="dek">Each page is a single self-contained file: the renderer is inlined, so it
   makes no network requests. Drag to pan, scroll to zoom, and the T3D below every graph
-  pastes straight into the Material Editor.</p>
+  pastes straight back into the editor it came from.</p>
   <ul>
 ${built.map((b) => `    <li><a class="item" href="${b.name}.html">
       <div class="t">${escape(b.title)}</div>
       <div class="s">${escape(b.summary)}</div>
-      <div class="k">${b.kb} KB &middot; no network requests</div>
+      <div class="k">${escape(b.domain)} &middot; ${b.kb} KB &middot; no network requests</div>
     </a></li>`).join("\n")}
   </ul>
-  <p class="foot">Built from <a href="https://github.com/HaJH/unreal-material-graph-skill">the specs in this repository</a>.</p>
+  <p class="foot">Built from <a href="https://github.com/HaJH/unreal-graph-skills">the specs in this repository</a>.</p>
 </div>
 `);
 

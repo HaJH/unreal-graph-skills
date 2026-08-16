@@ -1,0 +1,11 @@
+{
+  "name": "unreal-graph",
+  "description": "Draw Unreal node graphs — material and Niagara — as real graphs on the web, and emit the T3D that pastes straight back into the editor.",
+  "version": "2.0.0",
+  "author": {
+    "name": "Jeonghyeon Ha"
+  },
+  "homepage": "https://github.com/HaJH/unreal-graph-skills",
+  "repository": "https://github.com/HaJH/unreal-graph-skills",
+  "license": "MIT"
+}

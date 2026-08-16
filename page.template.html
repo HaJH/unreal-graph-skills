@@ -67,6 +67,19 @@ h1{
 .dek{margin:14px 0 0;max-width:62ch;color:var(--ink-soft);font-size:17px}
 .dek:empty{display:none}
 
+/* Where a module sits in the simulation. A script graph is only half the answer -- the other
+   half is which stage runs it -- and that is one row, not a second diagram. */
+.stages{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 0;padding:0;list-style:none}
+.stages li{
+  font-family:var(--font-display);
+  text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;line-height:1;
+  color:var(--ink-soft);background:var(--surface);
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;
+}
+.stages li[aria-current]{
+  color:var(--accent);border-color:var(--accent);background:var(--accent-soft);font-weight:600;
+}
+
 /* The graph panel stays in the engine's own dark world on purpose. A material chain is far
    wider than it is tall, so let the panel break out of the reading column — every extra
    pixel of width is a node that stays legible instead of being scaled away. */
@@ -111,7 +124,7 @@ __BUE_CSS__
     <p class="eyebrow">__EYEBROW__</p>
     <h1>__HEADING__</h1>
     <p class="dek">__DEK__</p>
-  </header>
+__CONTEXT_STRIP__  </header>
 
   <div class="panel">
     <div class="playground"></div>
@@ -120,8 +133,8 @@ __BUE_CSS__
   <section>
     <div class="src-head">
       <div>
-        <h2>Paste this into the Material Editor</h2>
-        <p class="sub">This is the text Unreal itself writes when you copy nodes. Select it and press Ctrl+C, then open a material and press Ctrl+V &mdash; the network arrives with its wiring and layout intact.</p>
+        <h2>__PASTE_HEADING__</h2>
+        <p class="sub">__PASTE_SUB__</p>
       </div>
       <button id="copy" type="button">Select T3D</button>
     </div>
