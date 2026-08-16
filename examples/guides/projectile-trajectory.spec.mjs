@@ -88,16 +88,16 @@ export default {
       type: "niagara",
       heading: "TrajParams — 스크래치 패드 모듈",
       script: "TrajParams",
-      height: 460,
+      height: 760,
       body: `파티클 인덱스를 궤적 번호와 구간 비율로 쪼갠 뒤, 궤적 파라미터를 받아 위치와 진행률을 낸다.
 **아래는 골격이다** — 실제 모듈은 여기에 Array Data Interface 읽기 6회(\`Length\`, \`Get\` ×5)가
 붙어 \`Start\`·\`P\`·\`P2\`·\`Tm\`을 채운다. 그 호출은 에셋 스크립트가 아니라 DI 함수라서 아직 스펙으로
 표현할 수 없다.`,
       pasteSub: "이 골격은 스크래치 패드에 그대로 붙는다. Array DI 읽기는 붙여넣은 뒤 손으로 잇는다.",
       nodes: [
-        { id: "map", type: "Input" },
+        { id: "map", type: "Input", x: 0, y: 0 },
 
-        { id: "get", type: "MapGet", in: { Source: "map" }, params: [
+        { id: "get", type: "MapGet", x: 300, y: 40, in: { Source: "map" }, params: [
           ["Particles.ID.Index", "int"],
           ["Engine.Time", "float"],
           ["Module.SegmentsPerTrajectory", "int"],
@@ -105,20 +105,20 @@ export default {
         ] },
 
         // idx / K = 궤적 번호, (idx % K) / (K-1) = 구간 비율
-        { id: "traj", type: "Op", op: "Numeric::Div",
+        { id: "traj", type: "Op", op: "Numeric::Div", x: 760, y: 0,
           in: { A: "get:Particles.ID.Index", B: "get:Module.SegmentsPerTrajectory" } },
 
-        { id: "curve", type: "CustomHlsl",
+        { id: "curve", type: "CustomHlsl", x: 760, y: 260,
           inputs: [["Index", "int"], ["K", "int"], ["EngineTime", "float"], ["LineArcRatio", "float"]],
           outputs: [["Pos", "vec3"], ["Fill", "float"], ["Width", "float"]],
           code: [
-            "// Start / P / P2 / Tm 은 Array DI Get 으로 채운다 (골격에서는 생략)",
+            "// Start / P / P2 / Tm come from the Array DI Get calls (left out of this skeleton)",
             "float T = (float)(Index % K) / (float)(K - 1);",
             "float yaw = radians(P.w);",
             "float groundZ = Start.z - P2.x;",
-            "float3 endPt = float3(P2.y, P2.z, groundZ);   // C++가 착탄 XY를 TrajParams2.yz로 전달",
+            "float3 endPt = float3(P2.y, P2.z, groundZ);   // C++ passes the impact XY in TrajParams2.yz",
             "float3 pos = lerp(Start, endPt, T);",
-            "float arcH = (P.x >= 0.5) ? P.z : (P.y * LineArcRatio);  // Line도 미세 아크",
+            "float arcH = (P.x >= 0.5) ? P.z : (P.y * LineArcRatio);  // a Line arcs too, only faintly",
             "pos.z += 4.0 * arcH * T * (1.0 - T);",
             "Pos = pos;",
             "Fill = (EngineTime - Tm.x) / max(Tm.y, 1e-3f);",
@@ -131,7 +131,7 @@ export default {
             LineArcRatio: "get:Module.LineArcRatio",
           } },
 
-        { id: "set", type: "MapSet",
+        { id: "set", type: "MapSet", x: 1320, y: 40,
           params: [
             ["Particles.Position", "position"],
             ["Particles.RibbonID", "int"],

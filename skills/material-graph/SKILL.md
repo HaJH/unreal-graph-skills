@@ -175,6 +175,9 @@ whose entry is marked `pinNamesVary`, where the label depends on the node's own 
   so a constant shows its pins but not its numbers.
 - **`MaterialOutput` is display-only on paste.** Unreal allows one root per material and
   drops the pasted one; every other node still comes in.
+- **Keep a Custom HLSL body ASCII.** The renderer mangles non-ASCII characters when it
+  prints the code inside the node — the same class of trap the project's C++ sources have with
+  cp949. The T3D itself carries them fine, so this costs nothing but readable comments.
 - **Fullscreen is removed when the page cannot have it.** The renderer's button calls
   `requestFullscreen()` and resizes the frame whether or not the request is granted; inside
   the artifact viewer it never is, so the frame would grow to screen height with no way back.

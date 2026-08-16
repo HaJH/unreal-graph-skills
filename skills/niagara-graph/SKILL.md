@@ -181,6 +181,9 @@ The emitter throws with instructions rather than emitting a wrong index.
   can reach into the row below. Give it its own `block`, or pin `y` on the nodes beside it.
 - **A pasted comment box does not drag its contents until it is reselected** — the same Slate
   behaviour `material-graph` documents.
+- **Keep a Custom HLSL body ASCII.** The renderer mangles non-ASCII characters when it
+  prints the code inside the node — the same class of trap the project's C++ sources have with
+  cp949. The T3D itself carries them fine, so this costs nothing but readable comments.
 - **Fullscreen is removed when the page cannot have it.** The renderer's button calls
   `requestFullscreen()` and resizes the frame whether or not the request is granted; inside
   the artifact viewer it never is, so the frame would grow to screen height with no way back.

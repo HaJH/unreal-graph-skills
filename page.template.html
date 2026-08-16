@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>__TITLE__</title>
 
 <style>
@@ -192,7 +193,11 @@ document.querySelectorAll(".panel[data-graph]").forEach((panel) => {
     const m = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
     const scale0 = m.a || 1;
     const view = frame.getBoundingClientRect();
-    const rects = nodes.map((n) => n.getBoundingClientRect());
+    const rects = nodes
+      .flatMap((n) => [n, ...n.querySelectorAll("*")])
+      .map((e) => e.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+    if (!rects.length) return false;
     const toCanvas = (v, origin, offset) => (v - origin - offset) / scale0;
     const box = {
       l: Math.min(...rects.map((r) => toCanvas(r.left, view.left, m.e))),
@@ -207,9 +212,19 @@ document.querySelectorAll(".panel[data-graph]").forEach((panel) => {
 
     const width = box.r - box.l, height = box.b - box.t;
     if (!(width > 0 && height > 0)) return false;
-    const scale = Math.min(frame.clientWidth / width, frame.clientHeight / height, 1);
+
+    // Fit to the width the panel actually has, then give the frame the height that scale needs.
+    // A fixed frame would letterbox every graph that is wider than it: node networks run from
+    // 3:1 to 12:1, so a one-size panel leaves a dead band under the short ones. The spec's height
+    // becomes a ceiling for the tall ones rather than the height of all of them.
+    const scale = Math.min(frame.clientWidth / width, 1);
+    const cap = parseInt(panel.dataset.height, 10) || 560;
+    const shown = Math.max(Math.min(height * scale, cap), 180);
+    frame.style.height = `${shown}px`;
+    stage.style.minHeight = `${shown}px`;
+
     const x = (frame.clientWidth - width * scale) / 2 - box.l * scale;
-    const y = (frame.clientHeight - height * scale) / 2 - box.t * scale;
+    const y = (shown - height * scale) / 2 - box.t * scale;
     canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
     return true;
   };
@@ -224,10 +239,17 @@ document.querySelectorAll(".panel[data-graph]").forEach((panel) => {
     panel.querySelectorAll(".frame-header__buttons-fullscreen").forEach((b) => b.remove());
   };
 
+  // Keep refining after the first success. A Custom HLSL node prints its body inside the node,
+  // and that lands after the first measurable layout — fitting once clips it off the bottom.
   let attempts = 0;
-  const tryFit = () => { dropFullscreen(); if (!fit() && ++attempts < 60) setTimeout(tryFit, 50); };
+  const tryFit = () => {
+    dropFullscreen();
+    if (fit()) { [80, 250, 700].forEach((ms) => setTimeout(fit, ms)); return; }
+    if (++attempts < 60) setTimeout(tryFit, 50);
+  };
   tryFit();
   addEventListener("resize", fit);
+  new ResizeObserver(fit).observe(panel);
 });
 
 // navigator.clipboard is not an option here: the artifact viewer frames this page cross-origin
