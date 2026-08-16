@@ -164,8 +164,8 @@ Begin Object Class=/Script/NiagaraEditor.NiagaraNodeFunctionCall Name="NiagaraNo
 
 - The asset reference is `Class'<PackagePath>.<AssetName>'`, so the asset name repeats.
 - **Pin names are the called script's own input names, verbatim** — spaces included, no
-  namespace prefix. Engine assets are not always tidy: `/Niagara/Functions/Math/Nlerp_Function`
-  names its output `"Ouput"`.
+  namespace prefix. They are whatever the asset's author typed, typos included, so they cannot
+  be derived and have to be read off the asset or a real copy.
 - **An output pin carries `bDefaultValueIsIgnored=True`** and no `DefaultValue`. This is the one
   place the flag differs; Map Get, Map Set and operator outputs all leave it `False`.
 - Function-call pins carry no `PinFriendlyName` or `PinToolTip`.

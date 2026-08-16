@@ -126,24 +126,26 @@ engine's own. Grep it when unsure — each entry lists its pins verbatim. Names 
 ```
 
 **Pin names are the called script's own input names, verbatim** — spaces included, no namespace
-prefix. `LerpQuaternion` really does expose `"Quat A"`, `"Quat B"`, `"Lerp Factor"` and
-`"Quaternion"` (verified against a real UE 5.8 copy). Engine assets are not always tidy:
-`/Niagara/Functions/Math/Nlerp_Function` names its output `"Ouput"`, typo and all. Read the
-names off the node in the editor rather than guessing them from the asset name.
+prefix (verified against a real UE 5.8 copy). They are whatever the asset's author typed, so do
+not derive them from the asset name, and do not assume they are tidy.
 
-To find the names without opening the editor, read them off the asset:
+**Listing them by hand does not scale, and this is the weak part of the skill.** There is no
+generated table for function scripts the way there is for operators: an op's signature lives in
+one engine C++ file, a function's lives in its own `.uasset`. Until there is one, get the names
+from the thing itself:
 
 ```
 node niagara/asset-names.mjs <path/to/Script.uasset> [filter]
 ```
 
-It lists every FName in the package, so it is a shortlist to recognise rather than an authority —
-but it is enough to catch `"Ouput"` before it costs you a paste. `examples/niagara/velocity-blend.spec.mjs`
-is built this way.
+That dumps every FName in the package — a shortlist to recognise, not an authority on order or
+direction. The authority is a real copy of the node out of the editor.
 
-The emitter deliberately leaves `CachedChangeId` unset, so Niagara treats the node as stale and
-rebuilds its pins from the asset. A spec that gets a pin name slightly wrong therefore heals on
-paste instead of arriving broken.
+Two things soften it. `CachedChangeId` is deliberately left unset, so Niagara treats the node as
+stale and rebuilds its pins from the asset — a spec that gets a name slightly wrong heals on
+paste rather than arriving broken. And a graph whose point is the surrounding maths reads fine
+with the call drawn as a single node, so reach for `FunctionCall` when the call *is* the point,
+not to be exhaustive.
 
 ## Regenerating
 

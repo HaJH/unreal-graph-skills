@@ -1,8 +1,8 @@
 // A scratch pad module that bends particle velocity towards a target direction over its life.
 //
-// The example that exercises FunctionCall: the pins are the called script's own input names,
-// spaces and all, read off /Niagara/Functions/Math/Nlerp_Function — whose output really is
-// spelled "Ouput" in the engine.
+// The example that exercises FunctionCall. Its pins are the called script's own input names,
+// copied off the asset rather than guessed — which is the whole difficulty with function calls,
+// and why the spelling below is the engine's and not a typo of mine.
 export default {
   script: "SNM_VelocityBlend",
   title: "Velocity blend",
