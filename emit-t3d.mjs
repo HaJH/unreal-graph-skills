@@ -346,7 +346,19 @@ export function emitT3D(spec) {
   const PAD_X = 56;
   const PAD_TOP = 104;
   const PAD_BOTTOM = 56;
-  const blockBoxes = [...new Set(nodes.map((n) => n.block).filter(Boolean))].map((name) => {
+  // Muted and low-alpha on purpose: the colour separates one stage from the next at a glance
+  // and is not meant to encode anything, so it must not compete with the nodes inside it.
+  const BLOCK_COLOURS = [
+    "(R=0.160000,G=0.280000,B=0.420000,A=0.300000)", // steel
+    "(R=0.140000,G=0.360000,B=0.320000,A=0.300000)", // teal
+    "(R=0.220000,G=0.340000,B=0.180000,A=0.300000)", // moss
+    "(R=0.420000,G=0.320000,B=0.120000,A=0.300000)", // amber
+    "(R=0.440000,G=0.220000,B=0.140000,A=0.300000)", // rust
+    "(R=0.340000,G=0.180000,B=0.360000,A=0.300000)", // plum
+    "(R=0.220000,G=0.200000,B=0.440000,A=0.300000)", // indigo
+    "(R=0.260000,G=0.260000,B=0.300000,A=0.300000)", // slate
+  ];
+  const blockBoxes = [...new Set(nodes.map((n) => n.block).filter(Boolean))].map((name, i) => {
     const members = nodes.filter((n) => n.block === name);
     const left = Math.min(...members.map((n) => n.x));
     const right = Math.max(...members.map((n) => n.x));
@@ -358,7 +370,7 @@ export function emitT3D(spec) {
       y: topEdge - PAD_TOP,
       w: right - left + NODE_W + PAD_X * 2,
       h: bottom - topEdge + NODE_H + PAD_TOP + PAD_BOTTOM,
-      color: spec.blockColors?.[name],
+      color: spec.blockColors?.[name] ?? BLOCK_COLOURS[i % BLOCK_COLOURS.length],
     };
   });
 
@@ -393,6 +405,10 @@ export function emitT3D(spec) {
       `   NodeHeight=${h}`,
       `   CommentColor=${color}`,
       `   NodeComment="${c.text}"`,
+      // Which nodes a box actually drags is `NodesUnderComment`, and that is private and not a
+      // UPROPERTY -- it is rebuilt in Slate, never serialised, so a pasted box starts empty.
+      // MoveMode is at least declared here rather than left to the class default.
+      "   MoveMode=GroupMovement",
       `   NodeGuid=${guid(`${material}/comment/${i}`)}`,
       "End Object",
     ].join("\n");

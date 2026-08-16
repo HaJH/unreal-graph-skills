@@ -62,8 +62,9 @@ export default {
 - `block: "Glow"` on a node puts it in a named block. Each block is laid out on its own, in the
   order the spec first mentions it, then packed across the page and wrapped — so a big graph
   reads left to right and then down, as stages rather than as one field of nodes. Each block
-  **gets a comment box drawn round it automatically**; colour one with
-  `blockColors: { Glow: "(R=..,G=..,B=..,A=0.400000)" }`. Nodes with no `block` share one
+  **gets a comment box drawn round it automatically**, in a muted colour cycled from a built-in
+  palette so one stage reads apart from the next; override with
+  `blockColors: { Glow: "(R=..,G=..,B=..,A=0.300000)" }`. Nodes with no `block` share one
   unnamed band and get no box, so existing specs are unaffected. `comments` is still there for
   a box that is not a block, and takes explicit `x`/`y`/`w`/`h`.
 - `layout: { laneColumns: 28 }` widens the page a graph wraps at (default 24 columns). Raise it
@@ -125,29 +126,15 @@ expressions, so a spec emits a function's *body* like any other graph. Calling o
 ```js
 { id: "space", type: "MaterialFunctionCall",
   function: "/Game/UI/MaterialFunctions/MF_UI_RectSpace",
-  inputs: [["UV", "8C1D…"], ["Offset", "A430…"]],
-  outputs: [["Centre", "77B2…"], ["Half", "0F19…"]],
+  inputs: ["UV", "Offset"],
+  outputs: ["Centre", "Half"],
   in: { UV: "uv", Offset: "offset" } }
 ```
 
-**Build the function before the caller**, and give the ids only if you have them. Reading the
-source says a wire into a call survives only while `FunctionInputs(i).ExpressionInputId`
-matches the Id of the matching `FunctionInput` inside the asset — `UpdateFromFunctionResource`
-resolves by that Guid alone, with no fall back to the name, and
-`UMaterialExpressionFunctionInput::PostEditImport` regenerates the Id whenever a body is
-pasted, so the numbers cannot be agreed in advance.
-
-**In practice (UE 5.8) a call pasted with no ids at all kept every one of its input wires** —
-naming the function and the inputs was enough. Do not lean on that: it is one engine version,
-the mechanism is not the documented one, and the failure mode is a silent mis-wire. Emit the
-ids when you can, and check the call's inputs after pasting either way.
-
-The ids are not reachable from Python: `Id` on a `FunctionInput` is a bare `UPROPERTY()` and
-so is `FunctionInputs` on the call, neither of which reflection exposes. Copy the function's
-nodes in the editor and read the ids out of the T3D, or leave them out and verify. What *is*
-scriptable is repair: `set_material_function` plus `connect_material_expressions` lets the
-editor fill the ids in itself, and it resolves pins by name — note that an unnamed input pin
-answers to the FName `'None'`, not to `'Input'`.
+**Build the function before the caller** — a call can only take its pins from an asset that
+already exists. The ids are optional: name the function and its inputs and the wires come in
+(verified on UE 5.8; `reference/ENCODING.md` has the Guid mechanics if a version ever stops
+doing that). Give an entry as a bare `"UV"` rather than `["UV", "8C1D…"]` and nothing is lost.
 
 Not included: Substrate/Strata slabs, the custom-output family, and composites with their pin
 bases — subgraph plumbing with its own rules.
@@ -174,6 +161,12 @@ whose entry is marked `pinNamesVary`, where the label depends on the node's own 
   way blueprintue.com does. A `NamedRerouteUsage` carries its variable in `Desc`, because its
   link to the declaration is a Guid the renderer cannot resolve on its own. **Re-vendoring
   drops the patch.**
+- **A pasted comment box does not drag its contents until it is reselected.** Which nodes a box
+  moves is `UEdGraphNode_Comment::NodesUnderComment`, which is private and not a `UPROPERTY` —
+  it is never serialised, and Slate rebuilds it on selection but skips the pass while the
+  widget still has no desired size, which is exactly the state a freshly pasted box is in. So
+  it cannot be carried in the T3D. Click away and select the box again (or resize it once) and
+  group dragging works from then on.
 - **Inline value fields are not drawn.** bue-render disables pin inputs for material nodes,
   so a constant shows its pins but not its numbers.
 - **`MaterialOutput` is display-only on paste.** Unreal allows one root per material and

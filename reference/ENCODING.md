@@ -128,7 +128,11 @@ given, and colliding with an existing graph is handled rather than fatal.
 `ConditionallyGenerateId(true)` — a *forced* regeneration — so the `Id` you paste is discarded.
 `FunctionOutput` does the same.
 
-That makes `MaterialExpressionMaterialFunctionCall` a two-step job:
+Which ought to make `MaterialExpressionMaterialFunctionCall` unemittable without first building
+the function and reading its ids back. **It is not: on UE 5.8 a call pasted with no
+`ExpressionInputId` at all kept every one of its input wires.** Why is not established — the
+mechanism above says it should not — so the ids stay optional in the spec and the shape below
+is what a real export looks like rather than what the emitter must produce.
 
 ```
 MaterialFunction="/Script/Engine.MaterialFunction'/Game/…/MF_Name.MF_Name'"
@@ -139,8 +143,14 @@ Outputs(0)=(OutputName="LayerBlendColor")
 
 `UpdateFromFunctionResource` restores each wire by matching `ExpressionInputId` against the
 Ids inside the referenced asset — `FindInputById`, with **no** fall back to the input's name.
-Since those Ids are minted when the function is built, they have to be read back off the built
-asset before a call node can be emitted. Build the function first, then the caller.
+The one thing that is certainly required is ordering: a call takes its pins from the asset, so
+build the function first, then the caller.
+
+The Ids are not reachable from Python either — `Id` on a `FunctionInput` and `FunctionInputs`
+on the call are both bare `UPROPERTY()`, which reflection does not expose. If a call ever does
+come in unwired, the repair is `set_material_function` plus `connect_material_expressions`,
+which resolves pins by name and lets the editor mint the Ids itself. An unnamed input pin
+answers to the FName `'None'` there, not to `'Input'`.
 
 ## Comments are two objects
 
