@@ -220,6 +220,89 @@ Observed on UE 5.8:
 
 Regenerate the table from a fresh capture when moving engine version.
 
+## The stack clipboard — a different payload in the same wrapper
+
+Copying in the emitter **stack** puts the same `UNiagaraClipboardContent` object on the
+clipboard, but carrying `Functions` (and `Renderers`) instead of `ExportedNodes`. Selecting a
+stage and copying takes that stage's modules, in order.
+
+Read off real UE 5.8 copies of an emitter's stages.
+
+```
+Begin Object Class=/Script/NiagaraEditor.NiagaraClipboardContent Name="NiagaraClipboardContent_18" ExportPath="…"
+   …declaration pass: one empty Begin Object per function and per input, nested…
+   Begin Object Name="NiagaraClipboardFunction_1" ExportPath="…"
+      Begin Object Name="NiagaraClipboardFunctionInput_0" ExportPath="…"
+         InputName="Spawn Count"
+         InputType=(ClassStructOrEnum="/Script/CoreUObject.ScriptStruct'/Script/Niagara.NiagaraInt32'",UnderlyingType=2)
+         Local(0)=64
+         Local(1)=0
+         Local(2)=0
+         Local(3)=0
+      End Object
+      FunctionName="SpawnBurst_Instantaneous"
+      Script="/Niagara/Modules/Emitter/SpawnBurst_Instantaneous.SpawnBurst_Instantaneous"
+      Inputs(0)="/Script/NiagaraEditor.NiagaraClipboardFunctionInput'NiagaraClipboardFunctionInput_0'"
+      ScriptVersion=2BF981484C8C7D22B0E909BBFE8AAC7D
+   End Object
+   Functions(0)="/Script/NiagaraEditor.NiagaraClipboardFunction'NiagaraClipboardFunction_0'"
+   Functions(1)="/Script/NiagaraEditor.NiagaraClipboardFunction'NiagaraClipboardFunction_1'"
+End Object
+```
+
+### `NiagaraClipboardFunction`
+
+| Property | Notes |
+|---|---|
+| `FunctionName` | The instance name in the stack. A Set Variables row reads `SetVariables_<GUID>`. |
+| `Script` | A **plain** asset path, not wrapped in `Class'…'` — unlike `FunctionScript` on a graph node. |
+| `ScriptVersion` | A GUID; absent on some modules. |
+| `Inputs(N)` | Name-only references to the input objects, with no outer qualification. |
+| `ScriptMode=Assignment` | A Set Variables row. It then carries `AssignmentTargets(0)=(Name="Particles.LastPulseTime",TypeDefHandle=(RegisteredTypeIndex=99))` and `AssignmentDefaults(0)=""`, and **no** `Script`. |
+
+A scratch pad module points into the owning system as a subobject:
+`Script="/Game/…/NS_AimIndicator.NS_AimIndicator:ScratchModule"`.
+
+### `NiagaraClipboardFunctionInput`
+
+| Property | Notes |
+|---|---|
+| `InputName` | The stack row's label. |
+| `InputType` | `(ClassStructOrEnum="<wrapper>'<path>'",UnderlyingType=N)` — **path-based, so portable**, unlike the graph side's registry index. `UnderlyingType` is 1 for a data interface (Class), 2 for a struct, 3 for an enum. |
+| `ValueMode` | Absent means `Local`. `Linked` adds `Linked=(Name="Engine.DeltaTime",TypeDefHandle=(RegisteredTypeIndex=99))` — the one place here that still needs an index. |
+| `Local(N)=<byte>` | The value, **one array element per line**, little-endian. A bool reads `255,255,255,255` for true and `0,0,0,0` for false. |
+| `bHasEditCondition` | Present on inputs gated by another input. |
+| `ChildrenInputs(N)` | Sub-inputs of a mode, nested as their own objects — how `Lifetime Mode` carries `Lifetime`. |
+
+### Renderers
+
+A Render-section copy carries the properties object whole, with a thin wrapper pointing at it:
+
+```
+   Begin Object Name="NiagaraMeshRendererProperties_0" ExportPath="…"
+      Meshes(0)=(Mesh="/Script/Engine.StaticMesh'/Game/…/SM_Plane.SM_Plane'")
+      OverrideMaterials(0)=(ExplicitMat="/Script/Engine.MaterialInstanceConstant'…'")
+      …
+   End Object
+   Begin Object Name="NiagaraClipboardRenderer_0" ExportPath="…"
+      RendererProperties="/Script/Niagara.NiagaraMeshRendererProperties'NiagaraClipboardContent_4:NiagaraMeshRendererProperties_0'"
+   End Object
+   Renderers(0)="/Script/NiagaraEditor.NiagaraClipboardRenderer'NiagaraClipboardRenderer_0'"
+```
+
+Cross-references inside the wrapper are qualified by the outer object
+(`NiagaraClipboardContent_4:NiagaraMeshRendererProperties_0`), while `Functions`, `Inputs` and
+`Renderers` use the bare name.
+
+### Pasting one
+
+Paste is a **replay**, not an import: the editor adds each module to the stack for real and
+applies inputs by name and type, silently skipping what does not match. So a payload that names
+an input wrongly fails quietly in the editor — which is the argument for validating a spec
+against the module's input table at build time instead.
+
+It also needs **exactly one selected row** in the target stack; a multi-selection is refused.
+
 ## Reading a capture
 
 `node reference/survey.mjs <file.t3d>` prints the pin encoding of a Material Editor copy. For a
