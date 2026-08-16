@@ -101,11 +101,14 @@ export function emitT3D(spec) {
     const wired = pin.name ? linkedTo(node.id, pin.name) : "";
     const value = pin.dir === "in" && !wired && type ? (pin.value ?? type.default) : undefined;
 
+    // Field order matches what the editor writes: name, friendly name, tooltip, direction.
+    // `friendly` is a rendered value — INVTEXT(..) for a parameter pin, the engine's own
+    // NSLOCTEXT for an operator pin — so it goes in verbatim.
     return "   CustomProperties Pin ("
       + `PinId=${pinId(node.id, key)},`
       + (pin.name ? `PinName="${pin.name}",` : "")
+      + (pin.friendly ? `PinFriendlyName=${pin.friendly},` : "")
       + (pin.tooltip ? `PinToolTip="${pin.tooltip}",` : "")
-      + (pin.friendly && pin.name ? `PinFriendlyName=INVTEXT("${pin.name}"),` : "")
       + (pin.dir === "out" ? `Direction="EGPD_Output",` : "")
       + `PinType.PinCategory="${type ? pinCategory(type) : "Misc"}",`
       + `PinType.PinSubCategory="${pin.sub ?? ""}",`

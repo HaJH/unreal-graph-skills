@@ -4,109 +4,425 @@
 //         (FNiagaraOpInfo::Init)
 // Engine: F:/UE_5.8
 //
-// Pin names, order and types are the engine's own rather than a guess. Regenerate when moving
-// engine version -- op signatures do change.
+// Pin names, order, types, per-pin defaults and labels are the engine's own rather than a
+// guess. `def` is the op's own default -- not the type's -- which is why Lerp's B is 1.0.
+// A `friendly` entry is written verbatim into PinFriendlyName, NSLOCTEXT and all; it is only
+// present when it differs from the pin name.
+//
+// Regenerate when moving engine version -- op signatures do change.
 //
 // Not included (1):
-//   Integer::SelectStaticInt: unresolved pin
+//   Integer::SelectStaticInt: unresolved pin name or type
 export const OPS = {
-  "Numeric::Add": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]], variadic: true },
-  "Numeric::Subtract": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]], variadic: true },
-  "Numeric::Mul": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]], variadic: true },
-  "Numeric::Div": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Madd": { in: [["A", "numeric"], ["B", "numeric"], ["C", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Lerp": { in: [["A", "numeric"], ["B", "numeric"], ["C", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::RcpFast": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Rcp": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::RSqrt": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Sqrt": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::OneMinus": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Negate": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Abs": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Exp": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Exp2": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Log": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Log2": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Sine": { in: [["Angle", "float"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::Sine(Radians)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Sine(Degrees)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Cosine": { in: [["Angle", "float"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::Cosine(Radians)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Cosine(Degrees)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Tangent": { in: [["Angle", "float"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::Tangent(Radians)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Tangent(Degrees)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcSine": { in: [["A", "numeric"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcSine(Radians)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcSine(Degrees)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::PI": { in: [], out: [["Result", "float"]] },
-  "Numeric::TWO_PI": { in: [], out: [["Result", "float"]] },
-  "Numeric::ArcCosine": { in: [["A", "numeric"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcCosine(Radians)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcCosine(Degrees)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcTangent": { in: [["A", "numeric"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcTangent(Radians)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcTangent(Degrees)": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcTangent2": { in: [["A", "numeric"], ["B", "numeric"], ["Period", "float"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcTangent2(Radians)": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::ArcTangent2(Degrees)": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::DegreesToRadians": { in: [["A", "float"]], out: [["Result", "float"]] },
-  "Numeric::RadiansToDegrees": { in: [["A", "float"]], out: [["Result", "float"]] },
-  "Numeric::Ceil": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Floor": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Round": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::FMod": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::FModFast": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Frac": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Trunc": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Clamp": { in: [["A", "numeric"], ["Min", "numeric"], ["Max", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Min": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]], variadic: true },
-  "Numeric::Max": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]], variadic: true },
-  "Numeric::Pow": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Sign": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Step": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Noise": { in: [["X", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Dot": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Normalize": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Length": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::DistancePos": { in: [["A", "position"], ["B", "position"]], out: [["Result", "float"]] },
-  "Numeric::Rand": { in: [["A", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Rand Integer": { in: [["Max", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::Rand Float": { in: [["Max", "numeric"]], out: [["Result", "numeric"]] },
-  "Numeric::SeededRand": { in: [["A", "numeric"], ["Seed 1", "int"], ["Seed 2", "int"], ["Seed 3", "int"]], out: [["Result", "numeric"]] },
-  "Numeric::SeededRand Integer": { in: [["Max", "numeric"], ["Seed 1", "int"], ["Seed 2", "int"], ["Seed 3", "int"]], out: [["Result", "numeric"]] },
-  "Numeric::SeededRand Float": { in: [["Max", "numeric"], ["Seed 1", "int"], ["Seed 2", "int"], ["Seed 3", "int"]], out: [["Result", "numeric"]] },
-  "Numeric::Hash Integer": { in: [["A", "int"], ["B", "int"]], out: [["Result", "int"]], variadic: true },
-  "Numeric::Hash Float": { in: [["A", "int"], ["B", "int"]], out: [["Result", "float"]], variadic: true },
-  "Numeric::CmpLT": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "bool"]] },
-  "Numeric::CmpLE": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "bool"]] },
-  "Numeric::CmpGT": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "bool"]] },
-  "Numeric::CmpGE": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "bool"]] },
-  "Numeric::CmpEQ": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "bool"]] },
-  "Numeric::CmpNEQ": { in: [["A", "numeric"], ["B", "numeric"]], out: [["Result", "bool"]] },
-  "Integer::BitAnd": { in: [["A", "int"], ["B", "int"]], out: [["Result", "int"]], variadic: true },
-  "Integer::BitOr": { in: [["A", "int"], ["B", "int"]], out: [["Result", "int"]], variadic: true },
-  "Integer::BitXOr": { in: [["A", "int"], ["B", "int"]], out: [["Result", "int"]], variadic: true },
-  "Integer::BitNot": { in: [["A", "int"]], out: [["Result", "int"]] },
-  "Integer::BitLShift": { in: [["A", "int"], ["B", "int"]], out: [["Result", "int"]], variadic: true },
-  "Integer::BitRShift": { in: [["A", "int"], ["B", "int"]], out: [["Result", "int"]], variadic: true },
-  "Integer::EnumEq": { in: [["A", "int"], ["B", "int"]], out: [["Result", "bool"]] },
-  "Integer::EnumNEq": { in: [["A", "int"], ["B", "int"]], out: [["Result", "bool"]] },
-  "Boolean::LogicAnd": { in: [["A", "bool"], ["B", "bool"]], out: [["Result", "bool"]], variadic: true },
-  "Boolean::LogicOr": { in: [["A", "bool"], ["B", "bool"]], out: [["Result", "bool"]], variadic: true },
-  "Boolean::LogicNot": { in: [["A", "bool"]], out: [["Result", "bool"]] },
-  "Boolean::LogicEq": { in: [["A", "bool"], ["B", "bool"]], out: [["Result", "bool"]] },
-  "Boolean::LogicNEq": { in: [["A", "bool"], ["B", "bool"]], out: [["Result", "bool"]] },
-  "Matrix::Transpose": { in: [["M", "matrix"]], out: [["Result", "matrix"]] },
-  "Matrix::Row0": { in: [["M", "matrix"]], out: [["Result", "vec4"]] },
-  "Matrix::Row1": { in: [["M", "matrix"]], out: [["Result", "vec4"]] },
-  "Matrix::Row2": { in: [["M", "matrix"]], out: [["Result", "vec4"]] },
-  "Matrix::Row3": { in: [["M", "matrix"]], out: [["Result", "vec4"]] },
-  "Matrix::MatrixMultiply": { in: [["A", "matrix"], ["B", "matrix"]], out: [["Result", "matrix"]], variadic: true },
-  "Matrix::MatrixVectorMultiply": { in: [["M", "matrix"], ["V", "vec4"]], out: [["Result", "vec4"]] },
-  "Matrix::TransformPosition": { in: [["M", "matrix"], ["V", "position"]], out: [["Result", "position"]] },
-  "Matrix::TransformVector": { in: [["M", "matrix"], ["V", "vec3"]], out: [["Result", "vec3"]] },
-  "Vector3::Cross": { in: [["A", "vec3"], ["B", "vec3"]], out: [["Result", "vec3"]] },
-  "Util::ExecIndex": { in: [], out: [["Result", "int"]] },
-  "Util::SpawnInterpolation": { in: [], out: [["Result", "float"]] },
+  "Numeric::Add": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "0.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::Subtract": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "0.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::Mul": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::Div": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Madd": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }, { name: "C", type: "numeric", def: "0.0", tip: "C" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Lerp": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }, { name: "C", type: "numeric", def: "0.0", friendly: "\"Alpha\"", tip: "A value typically between 0 and 1. Determines the percentage to use for interpolating from A to B." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::RcpFast": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Rcp": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::RSqrt": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Sqrt": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::OneMinus": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Negate": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Abs": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Exp": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Exp2": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Log": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Log2": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Sine": {
+    in: [{ name: "Angle", type: "float", def: "1.0", tip: "Angle as specified by the period range." }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Sine(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Sine(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Cosine": {
+    in: [{ name: "Angle", type: "float", def: "1.0", tip: "Angle as specified by the period range." }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Cosine(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Cosine(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Tangent": {
+    in: [{ name: "Angle", type: "float", def: "1.0", tip: "Angle as specified by the period range." }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Tangent(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Tangent(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcSine": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcSine(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcSine(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::PI": {
+    in: [],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+  },
+  "Numeric::TWO_PI": {
+    in: [],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+  },
+  "Numeric::ArcCosine": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcCosine(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcCosine(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcTangent": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcTangent(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcTangent(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcTangent2": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }, { name: "Period", type: "float", def: "1.0", tip: "Value in which a complete rotation has occurred." }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcTangent2(Radians)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::ArcTangent2(Degrees)": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::DegreesToRadians": {
+    in: [{ name: "A", type: "float", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+  },
+  "Numeric::RadiansToDegrees": {
+    in: [{ name: "A", type: "float", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+  },
+  "Numeric::Ceil": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Floor": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Round": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::FMod": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::FModFast": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Frac": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Trunc": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Clamp": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "Min", type: "numeric", def: "1.0", tip: "Min" }, { name: "Max", type: "numeric", def: "1.0", tip: "Max" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Min": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::Max": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::Pow": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Sign": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Step": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Noise": {
+    in: [{ name: "X", type: "numeric", def: "0.0", tip: "X" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Dot": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Normalize": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Length": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::DistancePos": {
+    in: [{ name: "A", type: "position", def: "1.0", tip: "A" }, { name: "B", type: "position", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+  },
+  "Numeric::Rand": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Rand Integer": {
+    in: [{ name: "Max", type: "numeric", def: "1.0", tip: "Max" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Rand Float": {
+    in: [{ name: "Max", type: "numeric", def: "1.0", tip: "Max" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::SeededRand": {
+    in: [{ name: "A", type: "numeric", def: "1.0", tip: "A" }, { name: "Seed 1", type: "int", def: "0", tip: "Seed 1" }, { name: "Seed 2", type: "int", def: "0", tip: "Seed 2" }, { name: "Seed 3", type: "int", def: "0", tip: "Seed 3" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::SeededRand Integer": {
+    in: [{ name: "Max", type: "numeric", def: "1.0", tip: "Max" }, { name: "Seed 1", type: "int", def: "0", tip: "Seed 1" }, { name: "Seed 2", type: "int", def: "0", tip: "Seed 2" }, { name: "Seed 3", type: "int", def: "0", tip: "Seed 3" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::SeededRand Float": {
+    in: [{ name: "Max", type: "numeric", def: "1.0", tip: "Max" }, { name: "Seed 1", type: "int", def: "0", tip: "Seed 1" }, { name: "Seed 2", type: "int", def: "0", tip: "Seed 2" }, { name: "Seed 3", type: "int", def: "0", tip: "Seed 3" }],
+    out: [{ name: "Result", type: "numeric", tip: "Result" }],
+  },
+  "Numeric::Hash Integer": {
+    in: [{ name: "A", type: "int", def: "0.0", tip: "A" }, { name: "B", type: "int", def: "0.0", tip: "B" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::Hash Float": {
+    in: [{ name: "A", type: "int", def: "0.0", tip: "A" }, { name: "B", type: "int", def: "0.0", tip: "B" }],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+    variadic: true,
+  },
+  "Numeric::CmpLT": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Numeric::CmpLE": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Numeric::CmpGT": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Numeric::CmpGE": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Numeric::CmpEQ": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Numeric::CmpNEQ": {
+    in: [{ name: "A", type: "numeric", def: "0.0", tip: "A" }, { name: "B", type: "numeric", def: "1.0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Integer::BitAnd": {
+    in: [{ name: "A", type: "int", def: "0", tip: "A" }, { name: "B", type: "int", def: "1", tip: "B" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+    variadic: true,
+  },
+  "Integer::BitOr": {
+    in: [{ name: "A", type: "int", def: "0", tip: "A" }, { name: "B", type: "int", def: "1", tip: "B" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+    variadic: true,
+  },
+  "Integer::BitXOr": {
+    in: [{ name: "A", type: "int", def: "0", tip: "A" }, { name: "B", type: "int", def: "1", tip: "B" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+    variadic: true,
+  },
+  "Integer::BitNot": {
+    in: [{ name: "A", type: "int", def: "1", tip: "A" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+  },
+  "Integer::BitLShift": {
+    in: [{ name: "A", type: "int", def: "1", tip: "A" }, { name: "B", type: "int", def: "1", tip: "B" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+    variadic: true,
+  },
+  "Integer::BitRShift": {
+    in: [{ name: "A", type: "int", def: "1", tip: "A" }, { name: "B", type: "int", def: "1", tip: "B" }],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+    variadic: true,
+  },
+  "Integer::EnumEq": {
+    in: [{ name: "A", type: "int", def: "0", tip: "A" }, { name: "B", type: "int", def: "0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Integer::EnumNEq": {
+    in: [{ name: "A", type: "int", def: "0", tip: "A" }, { name: "B", type: "int", def: "0", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Boolean::LogicAnd": {
+    in: [{ name: "A", type: "bool", def: "false", tip: "A" }, { name: "B", type: "bool", def: "true", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+    variadic: true,
+  },
+  "Boolean::LogicOr": {
+    in: [{ name: "A", type: "bool", def: "false", tip: "A" }, { name: "B", type: "bool", def: "true", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+    variadic: true,
+  },
+  "Boolean::LogicNot": {
+    in: [{ name: "A", type: "bool", def: "true", tip: "A" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Boolean::LogicEq": {
+    in: [{ name: "A", type: "bool", def: "false", tip: "A" }, { name: "B", type: "bool", def: "true", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Boolean::LogicNEq": {
+    in: [{ name: "A", type: "bool", def: "false", tip: "A" }, { name: "B", type: "bool", def: "true", tip: "B" }],
+    out: [{ name: "Result", type: "bool", tip: "Result" }],
+  },
+  "Matrix::Transpose": {
+    in: [{ name: "M", type: "matrix", tip: "M" }],
+    out: [{ name: "Result", type: "matrix", tip: "Result" }],
+  },
+  "Matrix::Row0": {
+    in: [{ name: "M", type: "matrix", tip: "M" }],
+    out: [{ name: "Result", type: "vec4", tip: "Result" }],
+  },
+  "Matrix::Row1": {
+    in: [{ name: "M", type: "matrix", tip: "M" }],
+    out: [{ name: "Result", type: "vec4", tip: "Result" }],
+  },
+  "Matrix::Row2": {
+    in: [{ name: "M", type: "matrix", tip: "M" }],
+    out: [{ name: "Result", type: "vec4", tip: "Result" }],
+  },
+  "Matrix::Row3": {
+    in: [{ name: "M", type: "matrix", tip: "M" }],
+    out: [{ name: "Result", type: "vec4", tip: "Result" }],
+  },
+  "Matrix::MatrixMultiply": {
+    in: [{ name: "A", type: "matrix", tip: "A" }, { name: "B", type: "matrix", tip: "B" }],
+    out: [{ name: "Result", type: "matrix", tip: "Result" }],
+    variadic: true,
+  },
+  "Matrix::MatrixVectorMultiply": {
+    in: [{ name: "M", type: "matrix", tip: "M" }, { name: "V", type: "vec4", def: "1.0,1.0,1.0", tip: "V" }],
+    out: [{ name: "Result", type: "vec4", tip: "Result" }],
+  },
+  "Matrix::TransformPosition": {
+    in: [{ name: "M", type: "matrix", tip: "M" }, { name: "V", type: "position", def: "1.0,1.0,1.0", tip: "V" }],
+    out: [{ name: "Result", type: "position", tip: "Result" }],
+  },
+  "Matrix::TransformVector": {
+    in: [{ name: "M", type: "matrix", tip: "M" }, { name: "V", type: "vec3", def: "1.0,1.0,1.0", tip: "V" }],
+    out: [{ name: "Result", type: "vec3", tip: "Result" }],
+  },
+  "Vector3::Cross": {
+    in: [{ name: "A", type: "vec3", def: "1.0,0.0,0.0", tip: "A" }, { name: "B", type: "vec3", def: "0.0,1.0,0.0", tip: "B" }],
+    out: [{ name: "Result", type: "vec3", tip: "Result" }],
+  },
+  "Util::ExecIndex": {
+    in: [],
+    out: [{ name: "Result", type: "int", tip: "Result" }],
+  },
+  "Util::SpawnInterpolation": {
+    in: [],
+    out: [{ name: "Result", type: "float", tip: "Result" }],
+  },
 };

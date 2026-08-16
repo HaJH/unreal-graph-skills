@@ -37,7 +37,7 @@ export const NODES = {
       ...(n.params ?? []).flatMap((p) => {
         const [name, type] = param(p);
         return [
-          { name, dir: "out", type, sub: "ParameterPin", friendly: true, persistent: `get/${name}/out` },
+          { name, dir: "out", type, sub: "ParameterPin", friendly: `INVTEXT("${name}")`, persistent: `get/${name}/out` },
           {
             dir: "in", type, sub: "ParameterPin", persistent: `get/${name}/default`,
             tooltip: `Default value for ${name} if no other module has set it previously in the stack.`,
@@ -64,7 +64,7 @@ export const NODES = {
       { name: "Dest", dir: "out", type: "map" },
       ...(n.params ?? []).map((p) => {
         const [name, type] = param(p);
-        return { name, dir: "in", type, sub: "ParameterPin", friendly: true };
+        return { name, dir: "in", type, sub: "ParameterPin", friendly: `INVTEXT("${name}")` };
       }),
       addPin("in"),
     ],
@@ -72,19 +72,26 @@ export const NODES = {
   },
 
   // An engine operator. Pins come from the generated table, so the spec only names the op.
+  // The table carries each pin's own default, which is not its type's -- Lerp's B is 1.0.
   Op: {
     class: "NiagaraNodeOp",
     pins: (n) => {
       const op = OPS[n.op];
       if (!op) throw new Error(`unknown Niagara op "${n.op}" — grep niagara/ue-niagara-ops.mjs`);
       // A variadic op takes extra operands named on past the last declared one: C, D, E…
-      const extra = (n.extraInputs ?? []).map((name) => [name, op.in[0][1]]);
-      if (extra.length && !op.variadic) {
+      if (n.extraInputs?.length && !op.variadic) {
         throw new Error(`op "${n.op}" does not support added inputs`);
       }
+      const template = op.in[0] ?? {};
+      const extra = (n.extraInputs ?? []).map((name) => ({ ...template, name, friendly: undefined, tip: name }));
+      const toPin = (p, dir) => ({
+        name: p.name, dir, type: p.type,
+        value: dir === "in" ? p.def : undefined,
+        friendly: p.friendly, tooltip: p.tip,
+      });
       return [
-        ...[...op.in, ...extra].map(([name, type]) => ({ name, dir: "in", type })),
-        ...op.out.map(([name, type]) => ({ name, dir: "out", type })),
+        ...[...op.in, ...extra].map((p) => toPin(p, "in")),
+        ...op.out.map((p) => toPin(p, "out")),
         ...(op.variadic ? [addPin("in")] : []),
       ];
     },
