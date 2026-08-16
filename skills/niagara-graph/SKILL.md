@@ -1,6 +1,6 @@
 ---
 name: niagara-graph
-description: Draw an Unreal Niagara script graph as a real node graph on the web instead of describing it in terminal text. Use whenever explaining a Niagara scratch pad, module script, dynamic input or function script of three or more connected nodes - Map Get/Map Set chains, operator maths on particle attributes, Custom HLSL - or when the user asks to see a Niagara graph, wants a node setup "as a picture", or asks which pins to add to a Map Get. Emits Niagara clipboard T3D, so the same output pastes straight into a script graph with Ctrl+V. Not for emitter stack or module-ordering questions, which are a list rather than a graph, and not for single-node answers.
+description: Draw an Unreal Niagara script graph as a real node graph on the web instead of describing it in terminal text. Use whenever explaining a Niagara scratch pad, module script, dynamic input or function script of three or more connected nodes - Map Get/Map Set chains, operator maths on particle attributes, Custom HLSL - or when the user asks to see a Niagara graph, wants a node setup "as a picture", or asks which pins to add to a Map Get. Emits Niagara clipboard T3D, so the same output pastes straight into a script graph with Ctrl+V. Also builds multi-section build-guide pages, where the emitter stack is drawn as a list beside the graphs - reach for that when asked to write up or visualise how a whole effect is built. Not for single-node answers.
 ---
 
 # Niagara graph on the web
@@ -167,6 +167,27 @@ verified by taking the same copy twice across a restart — but a UE 5.1 capture
 The emitter throws with instructions rather than emitting a wrong index.
 `reference/ENCODING-NIAGARA.md` documents how to reharvest the table.
 
+## Build guides — more than one section
+
+A guide for an effect is prose, an emitter stack and several graphs on one page, material and
+Niagara together. Give the spec a `sections` array instead of nodes at the top level:
+
+```js
+export default {
+  title: "투사체 궤적 인디케이터",
+  sections: [
+    { type: "prose",    heading: "무엇을 만드는가", body: "…" },
+    { type: "stack",    heading: "이미터 스택", emitter: "NS_X", stages: [ … ] },
+    { type: "niagara",  heading: "…", script: "SNM_X", nodes: [ … ] },
+    { type: "material", heading: "…", material: "M_X", nodes: [ … ] },
+  ],
+};
+```
+
+Same `build.mjs`, same publish step. `reference/BUILD-GUIDES.md` has the section types, the
+stack spec, and how to read a stack off a shipped system instead of transcribing it.
+`examples/guides/projectile-trajectory.spec.mjs` is a worked one — stack, scratch pad graph and the ribbon material in one page.
+
 ## Known limits
 
 - **The emitter stack is out of scope.** Copying an emitter is not possible even in the editor —
@@ -208,8 +229,11 @@ Paths are relative to the **plugin root** — two levels up from this file.
 | `niagara/export-functions.py` | editor step: exports script assets to T3D |
 | `niagara/generate-functions.mjs` | parses that export into the table and the type-index map |
 | `niagara/asset-names.mjs` | last-resort FName dump from a .uasset |
-| `lib/` | layout and GUIDs, shared with `material-graph` |
+| `niagara/read-stack.mjs` | reads an emitter's stack out of an exported system, as a spec fragment |
+| `lib/` | layout, GUIDs, and the guide section renderers — shared with `material-graph` |
+| `reference/BUILD-GUIDES.md` | the `sections` spec: prose, stack, and graphs on one page |
 | `page.template.html` | page shell, including the stage row |
 | `vendor/` | bue-render (MIT) — its Niagara support is upstream, not a local patch |
 | `reference/ENCODING-NIAGARA.md` | the clipboard format, verified against a real UE 5.8 copy |
 | `examples/niagara/` | working specs |
+| `examples/guides/` | worked build guides |

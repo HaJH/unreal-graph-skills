@@ -1,6 +1,6 @@
 ---
 name: material-graph
-description: Draw an Unreal material/shader node setup as a real node graph on the web instead of describing it in terminal text. Use whenever explaining a material or shader node network of three or more connected nodes - Fresnel rims, dissolves, panners, UV tricks, masks, blends - or when the user asks to see a material graph, wants a node setup "as a picture", or asks how nodes are wired. Emits Material Editor T3D, so the same output pastes straight into Unreal with Ctrl+V. Not for single-node answers or pure parameter questions. For Niagara script graphs use niagara-graph instead.
+description: Draw an Unreal material/shader node setup as a real node graph on the web instead of describing it in terminal text. Use whenever explaining a material or shader node network of three or more connected nodes - Fresnel rims, dissolves, panners, UV tricks, masks, blends - or when the user asks to see a material graph, wants a node setup "as a picture", or asks how nodes are wired. Emits Material Editor T3D, so the same output pastes straight into Unreal with Ctrl+V. Not for single-node answers or pure parameter questions. For Niagara script graphs use niagara-graph instead. Also builds multi-section build-guide pages - prose, an emitter stack and several graphs on one page - when asked to write up or visualise how an effect is built.
 ---
 
 # Material graph on the web
@@ -157,6 +157,27 @@ emit when they drift.
 <file.t3d>` prints the pin encoding of any Material Editor copy — use it to check a node
 whose entry is marked `pinNamesVary`, where the label depends on the node's own settings.
 
+## Build guides — more than one section
+
+A guide for an effect is prose, an emitter stack and several graphs on one page, material and
+Niagara together. Give the spec a `sections` array instead of nodes at the top level:
+
+```js
+export default {
+  title: "투사체 궤적 인디케이터",
+  sections: [
+    { type: "prose",    heading: "무엇을 만드는가", body: "…" },
+    { type: "stack",    heading: "이미터 스택", emitter: "NS_X", stages: [ … ] },
+    { type: "niagara",  heading: "…", script: "SNM_X", nodes: [ … ] },
+    { type: "material", heading: "…", material: "M_X", nodes: [ … ] },
+  ],
+};
+```
+
+Same `build.mjs`, same publish step. `reference/BUILD-GUIDES.md` has the section types, the
+stack spec, and how to read a stack off a shipped system instead of transcribing it.
+`examples/guides/projectile-trajectory.spec.mjs` is a worked one — its material section sits beside the Niagara that feeds it.
+
 ## Known limits
 
 - **Node titles follow Unreal's own caption**, via a local patch to the vendored renderer
@@ -202,11 +223,13 @@ Paths are relative to the **plugin root** — two levels up from this file.
 | `material/material-nodes.mjs` | the node table |
 | `material/ue-material-api.mjs` | generated pin names and output shapes, straight from the engine |
 | `material/generate-ue-api.mjs` | regenerates that table from an installed engine |
-| `lib/` | `layout.mjs` (dependency layout, block boxes) and `t3d.mjs` (GUIDs) — shared with `niagara-graph` |
+| `lib/` | `layout.mjs` (dependency layout, block boxes), `t3d.mjs` (GUIDs), `stack.mjs` and `prose.mjs` (guide sections) — shared with `niagara-graph` |
 | `page.template.html` | page shell; graph panel stays in the engine's dark palette |
 | `vendor/` | bue-render (MIT, from blueprintue-self-hosted-edition) |
 | `scripts/build-site.mjs` | builds the Pages demo from every example |
 | `reference/` | `ENCODING.md` — the T3D format; `survey.mjs` — read a shape off a real copy |
+| `reference/BUILD-GUIDES.md` | the `sections` spec: prose, stack, and graphs on one page |
+| `examples/guides/` | worked build guides |
 | `examples/material/` | working specs; `docs/preview.png` is a headless-Chrome shot of the first |
 
 Everything is inlined at build time because the Artifact CSP blocks every external host.

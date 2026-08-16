@@ -84,6 +84,30 @@ Node 18+ is the only requirement. Nothing is installed, nothing is fetched at bu
 - **One file, no network** — the renderer is inlined, so the page works offline and inside a
   strict CSP. Around 400–480 KB.
 
+## Build guides
+
+A spec can hold a `sections` array instead of a single graph — prose, an emitter stack, and as
+many material and Niagara graphs as the effect needs, on one page. An effect is rarely one graph:
+a Niagara module writes an attribute and a material reads it back, and split across two pages
+that contract disappears from the document.
+
+```js
+export default {
+  title: "Projectile trajectory",
+  sections: [
+    { type: "prose",    heading: "What this builds", body: "…" },
+    { type: "stack",    heading: "Emitter stack", emitter: "NS_X", stages: [ … ] },
+    { type: "niagara",  heading: "The scratch pad module", script: "SNM_X", nodes: [ … ] },
+    { type: "material", heading: "The ribbon material", material: "M_X", nodes: [ … ] },
+  ],
+};
+```
+
+The stack is drawn as a list, not a graph — stages and modules have order and nesting but no
+wires. [`reference/BUILD-GUIDES.md`](reference/BUILD-GUIDES.md) has the section types and the
+stack spec, and `niagara/read-stack.mjs` reads a stack straight out of an exported system so a
+guide starts from what shipped rather than from a transcription.
+
 ## Writing a spec
 
 `in` maps **pin name → source**. A material spec taps a named output with `"node.PinName"`; a
