@@ -1,22 +1,27 @@
-# unreal-material-graph-skill
+# unreal-graph-skills
 
-Describe an Unreal material node network in a few lines, get back a real graph on a web page —
-and the Material Editor T3D to paste straight back into Unreal.
+Describe an Unreal node graph in a few lines, get back a real graph on a web page — and the T3D
+to paste straight back into the editor it came from.
 
-A [Claude Code](https://claude.com/claude-code) skill. Terminal text is a poor medium for a
-node network: pin-by-pin prose is slow to read and easy to get wrong. This turns a compact
-spec into the same text Unreal writes when you copy nodes, renders it with blueprintue.com's
-own renderer, and produces one self-contained HTML file.
+A [Claude Code](https://claude.com/claude-code) plugin shipping two skills. Terminal text is a
+poor medium for a node network: pin-by-pin prose is slow to read and easy to get wrong. Each
+skill turns a compact spec into the same text Unreal writes when you copy nodes, renders it
+with blueprintue.com's own renderer, and produces one self-contained HTML file.
 
-[![A cooldown sweep material rendered as an Unreal node graph: TextureCoordinate through a polar-angle chain into the material output](docs/preview.png)](https://hajh.github.io/unreal-material-graph-skill/cooldown-sweep.html)
+| Skill | Draws | Pastes into |
+|---|---|---|
+| `material-graph` | Material / shader networks | the Material Editor |
+| `niagara-graph` | Niagara script graphs — scratch pad, module, dynamic input | a Niagara script graph |
 
-<sub>**[Open the live graph →](https://hajh.github.io/unreal-material-graph-skill/)** — pan,
-zoom, go fullscreen, and copy the T3D. The still above is
-[`examples/cooldown-sweep.spec.mjs`](examples/cooldown-sweep.spec.mjs), rebuilt from source on
-every push.</sub>
+[![A cooldown sweep material rendered as an Unreal node graph: TextureCoordinate through a polar-angle chain into the material output](docs/preview.png)](https://hajh.github.io/unreal-graph-skills/cooldown-sweep.html)
+
+<sub>**[Open the live graphs →](https://hajh.github.io/unreal-graph-skills/)** — pan, zoom, go
+fullscreen, and copy the T3D. The still above is
+[`examples/material/cooldown-sweep.spec.mjs`](examples/material/cooldown-sweep.spec.mjs),
+rebuilt from source on every push.</sub>
 
 ```js
-// examples/cooldown-sweep.spec.mjs, abridged
+// examples/material/cooldown-sweep.spec.mjs, abridged
 export default {
   material: "M_UI_CooldownSweep",
   title: "Cooldown Sweep",
@@ -24,30 +29,49 @@ export default {
     { id: "uv", type: "TextureCoordinate" },
     { id: "half", type: "Constant2Vector", props: { R: "0.500000", G: "0.500000" } },
     { id: "centered", type: "Subtract", in: { A: "uv", B: "half" } },
-    { id: "u", type: "ComponentMask", in: { Input: "centered" },
-      props: { R: "True", G: "False", B: "False", A: "False" } },
     // …
     { id: "out", type: "MaterialOutputUI", in: { "Final Color": "tint", Opacity: "opacity" } },
   ],
 };
 ```
 
+```js
+// examples/niagara/pop-fade.spec.mjs, abridged
+export default {
+  script: "SNM_PopFade",
+  stage: "Particle Update",
+  nodes: [
+    { id: "map", type: "Input" },
+    { id: "get", type: "MapGet", in: { Source: "map" }, params: [
+      ["Particles.NormalizedAge", "float"], ["Module.PopScale", "float"] ] },
+    { id: "falloff", type: "Op", op: "Numeric::OneMinus", in: { A: "get:Particles.NormalizedAge" } },
+    // …
+  ],
+};
 ```
-node build.mjs cooldown.spec.mjs cooldown.html
-  19 nodes, 52 pins, 19 wires
+
 ```
+node build.mjs examples/niagara/pop-fade.spec.mjs pop-fade.html
+  8 nodes, 29 pins, 11 wires
+```
+
+The domain is read off the spec: a `material` key builds a material graph, a `script` key builds
+a Niagara one.
 
 ## Install
 
-Clone into your skills directory:
+Clone anywhere and point Claude Code at it:
 
 ```
-git clone https://github.com/HaJH/unreal-material-graph-skill.git \
-  ~/.claude/skills/material-graph
+git clone https://github.com/HaJH/unreal-graph-skills.git ~/.claude/skills/unreal-graph
 ```
 
-Claude picks it up on the next session. It fires on its own when a material or shader node
-setup of three or more connected nodes comes up; you can also invoke it directly.
+A plugin under your skills directory auto-loads on the next session, as `unreal-graph@skills-dir` —
+no marketplace, no install step. The skills are then `/unreal-graph:material-graph` and
+`/unreal-graph:niagara-graph`, and each fires on its own when a node setup of three or more
+connected nodes comes up.
+
+To try it without installing, `claude --plugin-dir ./unreal-graph-skills`.
 
 Node 18+ is the only requirement. Nothing is installed, nothing is fetched at build time.
 
@@ -55,75 +79,94 @@ Node 18+ is the only requirement. Nothing is installed, nothing is fetched at bu
 
 - **A rendered graph** — real UE node boxes, typed pins, curved wires, pan and zoom, scaled to
   fit on load.
-- **Pasteable T3D** — select it, `Ctrl+C`, then `Ctrl+V` in a material. The network arrives
-  with its wiring and layout intact.
+- **Pasteable T3D** — select it, `Ctrl+C`, then `Ctrl+V` in the editor. The network arrives with
+  its wiring and layout intact.
 - **One file, no network** — the renderer is inlined, so the page works offline and inside a
-  strict CSP. Around 450 KB.
+  strict CSP. Around 400–480 KB.
 
 ## Writing a spec
 
-`in` maps **pin name → source**; `"node.PinName"` taps a specific output, bare `"node"` takes
-the first. `props` are written verbatim into the expression, so quote the way Unreal does:
-`ParameterName: '"PanSpeed"'`, floats as `"0.150000"`.
+`in` maps **pin name → source**. A material spec taps a named output with `"node.PinName"`; a
+Niagara spec uses `"node:PinName"`, because Niagara pin names are themselves dotted
+(`Particles.NormalizedAge`). A bare `"node"` takes the first output either way.
 
-State a value **once**, in `props` — the pin's inline default is derived from it. A value lives
-twice in T3D and Unreal reads the pin when pasting, so a mismatch renders fine and pastes in
-wrong. The emitter refuses to emit when the two drift.
+Positions are optional. Nodes are layered by distance to the output, so constants and parameters
+land directly in front of whatever consumes them, and rows relax toward each node's neighbours.
+Set `x`/`y` on a node to pin it. `block: "Name"` groups nodes into a stage, laid out on its own
+and wrapped in a comment box.
 
-Positions are optional. Nodes are layered by distance to the output, so constants and
-parameters land directly in front of whatever consumes them, and rows relax toward each node's
-neighbours. Set `x`/`y` on a node to pin it.
-
-`title`, `summary` and `height` are optional page settings — a flat, wide chain reads better
-in a shorter frame than the 560px default.
+`title`, `summary` and `height` are optional page settings; a Niagara spec can also set `stage`
+to draw the simulation stage the module belongs to.
 
 Unknown node types, wires to nodes that do not exist, and pin names a node does not have all
 fail the build.
 
-## Node types
+### Material specifics
 
-**257 expressions, generated from the engine.** `ue-material-api.mjs` is produced by
-`scripts/generate-ue-api.mjs` reading an installed Unreal — pin names, pin order and output
+`props` are written verbatim into the expression, so quote the way Unreal does:
+`ParameterName: '"PanSpeed"'`, floats as `"0.150000"`. State a value **once**, in `props` — the
+pin's inline default is derived from it. A value lives twice in a material's T3D and Unreal
+reads the pin when pasting, so a mismatch renders fine and pastes in wrong; the emitter refuses
+to emit when the two drift. Niagara has no such trap, because a value lives only on the pin.
+
+**274 expressions, generated from the engine.** `material/ue-material-api.mjs` is produced by
+`material/generate-ue-api.mjs` reading an installed Unreal — pin names, pin order and output
 shapes are the engine's own, not a transcription. Use the Unreal class name without the
-`MaterialExpression` prefix (`Multiply`, `TextureSample`, `Fresnel`, `ComponentMask`,
-`Arctangent2Fast`), plus short aliases for `Lerp`, `Dot`, `Cross`.
+`MaterialExpression` prefix (`Multiply`, `TextureSample`, `Fresnel`, `ComponentMask`), plus
+short aliases for `Lerp`, `Dot`, `Cross`.
 
 ```
-node scripts/generate-ue-api.mjs /path/to/UE_5.8
+node material/generate-ue-api.mjs /path/to/UE_5.8
 ```
 
-Re-run it when moving engine version — pin names do change between them. Substrate slabs, the
-custom-output family and structural nodes are left out; they are separate subsystems with
-their own wiring rules.
+### Niagara specifics
 
-`Custom` is the one node with its own spec shape, since a Custom node declares its pins per
-instance rather than inheriting them from its class — name the inputs and the HLSL body sees
-those names. [`examples/ui-rounded-rect.spec.mjs`](examples/ui-rounded-rect.spec.mjs) uses it
-for a rounded-rectangle distance field.
+Structural nodes are `Input`, `MapGet`, `MapSet`, `Op`, `FunctionCall`, `CustomHlsl` and
+`Reroute`. Their pins are not fixed by class — a Map Get's pins **are** the parameters you ask
+for — so a spec declares them:
 
-[`reference/ENCODING.md`](reference/ENCODING.md) documents the serialisation format, and
-`reference/survey.mjs` prints the pin encoding of any Material Editor copy — useful for the
-handful of nodes whose pin labels shift with their own settings.
+```js
+{ id: "get", type: "MapGet", in: { Source: "map" },
+  params: [["Particles.NormalizedAge", "float"], ["Module.PopScale", "float"]] }
+```
+
+**99 operators, generated from the engine.** `niagara/ue-niagara-ops.mjs` is produced by
+`niagara/generate-ops.mjs` parsing `FNiagaraOpInfo::Init` — one file, so an engine bump is one
+re-read. Name an op the way the engine does: `Numeric::Add`, `Numeric::Lerp`, `Boolean::LogicAnd`.
+
+```
+node niagara/generate-ops.mjs /path/to/UE_5.8
+```
+
+An op the parser cannot resolve is listed in the generated file's header rather than guessed at.
+
+[`reference/ENCODING.md`](reference/ENCODING.md) and
+[`reference/ENCODING-NIAGARA.md`](reference/ENCODING-NIAGARA.md) document the two serialisation
+formats, both verified against real editor copies.
 
 ## Examples
 
 | | |
 |---|---|
-| [Cooldown Sweep](https://hajh.github.io/unreal-material-graph-skill/cooldown-sweep.html) | a clock wipe for skill icons, from the polar angle of the UV |
-| [Shield Pulse](https://hajh.github.io/unreal-material-graph-skill/shield-pulse.html) | a fresnel rim modulated by a panning noise sample |
-| [Dissolve with Burn Edge](https://hajh.github.io/unreal-material-graph-skill/dissolve-burn.html) | one subtraction driving both the clip mask and the glowing rim |
-| [Hologram Scanlines](https://hajh.github.io/unreal-material-graph-skill/hologram-scanline.html) | scrolling scanlines and a rim, with nothing sampled |
-| [Rounded Rectangle Mask](https://hajh.github.io/unreal-material-graph-skill/ui-rounded-rect.html) | a signed distance field in a `Custom` node |
+| [Cooldown Sweep](https://hajh.github.io/unreal-graph-skills/cooldown-sweep.html) | a clock wipe for skill icons, from the polar angle of the UV |
+| [Shield Pulse](https://hajh.github.io/unreal-graph-skills/shield-pulse.html) | a fresnel rim modulated by a panning noise sample |
+| [Dissolve with Burn Edge](https://hajh.github.io/unreal-graph-skills/dissolve-burn.html) | one subtraction driving both the clip mask and the glowing rim |
+| [Hologram Scanlines](https://hajh.github.io/unreal-graph-skills/hologram-scanline.html) | scrolling scanlines and a rim, with nothing sampled |
+| [Rounded Rectangle Mask](https://hajh.github.io/unreal-graph-skills/ui-rounded-rect.html) | a signed distance field in a `Custom` node |
+| [Pop and Fade](https://hajh.github.io/unreal-graph-skills/pop-fade.html) | a Niagara scratch pad module scaling a sprite over its life |
 
 ## Known limits
 
-- **Parameter nodes are titled by class, not by parameter name.** A `ScalarParameter` reads
-  "ScalarParameter", not "PanSpeed". blueprintue.com behaves the same. Use a comment box when
-  the name matters.
-- **Inline value fields are not drawn.** The renderer disables pin inputs for material nodes,
-  so a constant shows its pins but not its numbers.
+- **A pasted comment box does not drag its contents until it is reselected.** Which nodes a box
+  moves is rebuilt in Slate and never serialised, so a fresh paste starts empty. Click away and
+  select the box again and group dragging works from then on.
+- **Inline value fields are not drawn for material nodes.** The renderer disables pin inputs
+  there, so a material constant shows its pins but not its numbers. Niagara pins do draw theirs.
 - **`MaterialOutput` is display-only on paste.** Unreal allows one root per material and drops
   the pasted one; every other node still arrives.
+- **Niagara type indices are per engine version.** An `FNiagaraVariable` stores its type as a
+  runtime registry index, which the T3D carries verbatim. It is stable across editor restarts
+  but not across engine versions — see `reference/ENCODING-NIAGARA.md` for how to reharvest it.
 - **No one-click copy in a Claude Artifact.** The viewer frames the page cross-origin with no
   Permissions Policy delegation, so `clipboard-write` is never granted. The button selects the
   block instead and you press `Ctrl+C`.

@@ -1,6 +1,6 @@
 ---
 name: material-graph
-description: Draw an Unreal material/shader node setup as a real node graph on the web instead of describing it in terminal text. Use whenever explaining a material or shader node network of three or more connected nodes - Fresnel rims, dissolves, panners, UV tricks, masks, blends - or when the user asks to see a material graph, wants a node setup "as a picture", or asks how nodes are wired. Emits Material Editor T3D, so the same output pastes straight into Unreal with Ctrl+V. Not for single-node answers or pure parameter questions.
+description: Draw an Unreal material/shader node setup as a real node graph on the web instead of describing it in terminal text. Use whenever explaining a material or shader node network of three or more connected nodes - Fresnel rims, dissolves, panners, UV tricks, masks, blends - or when the user asks to see a material graph, wants a node setup "as a picture", or asks how nodes are wired. Emits Material Editor T3D, so the same output pastes straight into Unreal with Ctrl+V. Not for single-node answers or pure parameter questions. For Niagara script graphs use niagara-graph instead.
 ---
 
 # Material graph on the web
@@ -15,10 +15,14 @@ into Unreal with Ctrl+V, so the reader gets a picture *and* the real nodes.
 Use it when describing a material/shader node setup of **three or more connected nodes**.
 Skip it for a single node, a parameter value question, or a conceptual answer with no wiring.
 
+**Niagara script graphs are the sibling skill, `niagara-graph`** — same pipeline, different
+editor. Reach for that one for scratch pad, module and dynamic-input graphs.
+
 ## Workflow
 
 1. Write a spec (see below) to a `.mjs` file — the scratchpad directory is the right home.
-2. `node <skill>/build.mjs <spec.mjs> [out.html]`
+2. `node <plugin>/build.mjs <spec.mjs> [out.html]` — the plugin root is two levels up from
+   this file. `build.mjs` picks the domain off the spec's `material` key.
 3. Publish `out.html` with the Artifact tool and give the user the link.
 
 The build fails loudly on an unknown node type, a wire to a node that does not exist, or a
@@ -50,7 +54,7 @@ export default {
 };
 ```
 
-- `in` maps **pin name → source**. Pin names are the ones in `material-nodes.mjs`.
+- `in` maps **pin name → source**. Pin names are the ones in `material/material-nodes.mjs`.
 - `props` are written verbatim into the expression object, so quote strings the way Unreal
   does: `ParameterName: '"PanSpeed"'`, floats as `"0.150000"`.
 - State a value **once**, in `props`. The pin's inline `DefaultValue` is derived from it, so
@@ -73,14 +77,14 @@ export default {
 
 ## Available node types
 
-**274 expressions, generated from the engine.** `ue-material-api.mjs` is produced by
-`scripts/generate-ue-api.mjs` reading an installed Unreal, so every pin name, pin order and
+**274 expressions, generated from the engine.** `material/ue-material-api.mjs` is produced by
+`material/generate-ue-api.mjs` reading an installed Unreal, so every pin name, pin order and
 output shape is the engine's own rather than a guess. Use the Unreal class name without the
 `MaterialExpression` prefix — `Multiply`, `TextureSample`, `Fresnel`, `Panner`,
 `ComponentMask`, `Arctangent2Fast`, `DepthFade`. A few short aliases exist for the names
 nobody spells out: `Lerp`, `Dot`, `Cross`.
 
-Grep `ue-material-api.mjs` when unsure — each entry lists its pins verbatim.
+Grep `material/ue-material-api.mjs` when unsure — each entry lists its pins verbatim.
 
 Output — `MaterialOutput` for a surface material, `MaterialOutputUI` for one whose domain is
 User Interface (Final Color / Opacity / Opacity Mask instead of the full lit set).
@@ -97,7 +101,7 @@ than fixed by its class. Name the inputs and the HLSL body sees those names:
 The declared order is the pin order, each name must be a valid HLSL identifier, and
 `outputType` is one of `CMOT_Float1` … `CMOT_Float4`. Reach for it when a few lines of HLSL
 say the thing plainly and a dozen maths nodes would not — a signed distance field, say. See
-`examples/ui-rounded-rect.spec.mjs`.
+`examples/material/ui-rounded-rect.spec.mjs`.
 
 **Named reroutes** are how a large graph stays readable: a declaration names a value once, and
 a usage picks it up anywhere with no wire drawn between them. Both ends derive their Guid from
@@ -139,10 +143,10 @@ doing that). Give an entry as a bare `"UV"` rather than `["UV", "8C1D…"]` and 
 Not included: Substrate/Strata slabs, the custom-output family, and composites with their pin
 bases — subgraph plumbing with its own rules.
 
-**Regenerating:** `node scripts/generate-ue-api.mjs <engine root>`. Run it when moving to a
+**Regenerating:** `node material/generate-ue-api.mjs <engine root>`. Run it when moving to a
 new engine version; pin names do change between versions.
 
-**Hand-written overlay:** `material-nodes.mjs` adds only what the headers cannot express —
+**Hand-written overlay:** `material/material-nodes.mjs` adds only what the headers cannot express —
 the inline literal pins (a Constant's number is not an `FExpressionInput`), TextureSample's
 collapsed pins, and `pinDefaults`. A value lives *twice* in T3D, as an expression property
 and as the pin's `DefaultValue`, and Unreal reads the pin when pasting, so a node whose two
@@ -181,17 +185,21 @@ whose entry is marked `pinNamesVary`, where the label depends on the node's own 
 
 ## Files
 
+Paths are relative to the **plugin root** — two levels up from this file.
+
 | | |
 |---|---|
-| `build.mjs` | CLI: spec → self-contained HTML |
-| `emit-t3d.mjs` | spec → T3D, including layout, GUIDs and `LinkedTo` wiring |
-| `material-nodes.mjs` | the node table |
+| `build.mjs` | CLI: spec → self-contained HTML, for both domains |
+| `material/emit-t3d.mjs` | spec → T3D, including GUIDs and `LinkedTo` wiring |
+| `material/material-nodes.mjs` | the node table |
+| `material/ue-material-api.mjs` | generated pin names and output shapes, straight from the engine |
+| `material/generate-ue-api.mjs` | regenerates that table from an installed engine |
+| `lib/` | `layout.mjs` (dependency layout, block boxes) and `t3d.mjs` (GUIDs) — shared with `niagara-graph` |
 | `page.template.html` | page shell; graph panel stays in the engine's dark palette |
 | `vendor/` | bue-render (MIT, from blueprintue-self-hosted-edition) |
-| `ue-material-api.mjs` | generated pin names and output shapes, straight from the engine |
-| `scripts/` | `generate-ue-api.mjs` regenerates it; `build-site.mjs` builds the Pages demo |
+| `scripts/build-site.mjs` | builds the Pages demo from every example |
 | `reference/` | `ENCODING.md` — the T3D format; `survey.mjs` — read a shape off a real copy |
-| `examples/` | working specs; `docs/preview.png` is a headless-Chrome shot of the first |
+| `examples/material/` | working specs; `docs/preview.png` is a headless-Chrome shot of the first |
 
 Everything is inlined at build time because the Artifact CSP blocks every external host.
 `build.mjs` refuses to build if the vendored CSS ever gains a non-`data:` `url()`.
