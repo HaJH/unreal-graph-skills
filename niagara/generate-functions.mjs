@@ -17,6 +17,16 @@ if (!dir) {
   process.exit(1);
 }
 
+// The exporter writes UTF-16LE whenever the asset holds a character that codepage cannot avoid —
+// a Korean comment in a Custom HLSL node is enough. Reading those as UTF-8 yields text that
+// matches nothing, so the asset silently contributes no functions. Honour the BOM.
+const readText = (file) => {
+  const buf = readFileSync(file);
+  if (buf[0] === 0xFF && buf[1] === 0xFE) return buf.subarray(2).toString("utf16le");
+  if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) return buf.subarray(3).toString("utf8");
+  return buf.toString("utf8");
+};
+
 // An asset holds one script source per version; every one repeats the whole graph, so scope to
 // the first or every input comes out two or three times over.
 const firstGraph = (text) => {
@@ -102,7 +112,7 @@ let scanned = 0;
 let skipped = 0;
 
 for (const file of readdirSync(dir).filter((f) => f.toUpperCase().endsWith(".T3D"))) {
-  const text = readFileSync(join(dir, file), "utf8");
+  const text = readText(join(dir, file));
   const graph = firstGraph(text);
   if (!graph) { skipped++; continue; }
   scanned++;
