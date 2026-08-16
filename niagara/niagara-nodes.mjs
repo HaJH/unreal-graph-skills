@@ -145,6 +145,43 @@ export const NODES = {
     },
   },
 
+  // Calls a function on a data interface — Length or Get on an Array DI, and the like. It is the
+  // same node class as a script call, but driven by a Signature instead of a FunctionScript,
+  // because there is no asset to point at. The interface itself arrives on the first pin.
+  DataInterfaceCall: {
+    class: "NiagaraNodeFunctionCall",
+    pins: (n) => {
+      if (!n.fn) throw new Error(`DataInterfaceCall "${n.id}" needs \`fn\` — the function name`);
+      if (!n.di) throw new Error(`DataInterfaceCall "${n.id}" needs \`di\` — the interface path`);
+      const di = { struct: n.di, wrapper: "/Script/CoreUObject.Class" };
+      return [
+        { name: n.self ?? "Array interface", dir: "in", type: di },
+        ...(n.inputs ?? []).map((p) => {
+          const [name, type] = param(p);
+          return { name, dir: "in", type };
+        }),
+        ...(n.outputs ?? []).map((p) => {
+          const [name, type] = param(p);
+          return { name, dir: "out", type, defaultIgnored: true };
+        }),
+      ];
+    },
+    props: (n, { typeHandle }) => {
+      const di = { struct: n.di, wrapper: "/Script/CoreUObject.Class" };
+      const entry = (name, type) => `(Name="${name}",TypeDefHandle=${typeHandle(type, `DataInterfaceCall "${n.id}"`)})`;
+      const ins = [
+        entry(n.self ?? "Array interface", di),
+        ...(n.inputs ?? []).map((p) => { const [name, type] = param(p); return entry(name, type); }),
+      ];
+      const outs = (n.outputs ?? []).map((p) => { const [name, type] = param(p); return entry(name, type); });
+      return [
+        `Signature=(Name="${n.fn}",Inputs=(${ins.join(",")}),Outputs=(${outs.join(",")}),`
+        + `bMemberFunction=True,FunctionVersion=${n.version ?? 1})`,
+        `FunctionDisplayName="${n.label ?? n.fn}"`,
+      ];
+    },
+  },
+
   // Inline HLSL, for the few lines that say the thing plainly where a dozen op nodes would not.
   CustomHlsl: {
     class: "NiagaraNodeCustomHlsl",

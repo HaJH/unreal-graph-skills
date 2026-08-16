@@ -76,7 +76,10 @@ const byStruct = new Map(Object.values(TYPES).map((t) => [t.struct, t]));
 export const typeOf = (name) => {
   if (typeof name === "object") {                         // an inline { struct, wrapper }
     const known = byStruct.get(name.struct);
-    return known ? { ...known, ...name } : name;
+    // A type named only by its path — a data interface, say — still needs its registry index
+    // where an FNiagaraVariable carries it, and the generated map knows every path it saw.
+    const index = name.index ?? known?.index ?? indexOf(name.struct);
+    return { ...(known ?? {}), ...name, index };
   }
   const t = TYPES[name];
   if (!t) throw new Error(`unknown Niagara type "${name}" — known: ${Object.keys(TYPES).join(", ")}`);

@@ -88,6 +88,7 @@ only on its pin, so there is nothing to keep in agreement.
 | `MapSet` | `Source` in, `Dest` out, one input pin per `params` entry. |
 | `Op` | An engine operator. `op: "Numeric::Mul"`. Pins come from the generated table. |
 | `FunctionCall` | Calls a module / dynamic input / function script asset. |
+| `DataInterfaceCall` | Calls a function on a data interface — `Length`, `Get` on an Array DI. |
 | `CustomHlsl` | Inline HLSL with declared `inputs` / `outputs`. |
 | `Reroute` | Tidies a single wire. `type:` sets what flows through it. |
 
@@ -104,6 +105,28 @@ engine's own. Grep it when unsure — each entry lists its pins verbatim. Names 
 { id: "sum", type: "Op", op: "Numeric::Add", extraInputs: ["C"],
   in: { A: "a", B: "b", C: "c" } }
 ```
+
+A **data interface** is read through `DataInterfaceCall`. It is the same node class as a script
+call, but there is no asset to point at, so it is driven by a signature the spec states:
+
+```js
+{ id: "start", type: "DataInterfaceCall", fn: "Get",
+  di: "/Script/Niagara.NiagaraDataInterfaceArrayFloat3",
+  inputs: [["Index", "int"]], outputs: [["Value", "vec3"]],
+  in: { "Array interface": "get:Module.Positions", Index: "traj" } }
+```
+
+The interface arrives on the first pin, named `Array interface` by default (`self` renames it).
+Declare the DI's own parameter on a Map Get with an inline type:
+
+```js
+["Module.Positions", { struct: "/Script/Niagara.NiagaraDataInterfaceArrayFloat3",
+                       wrapper: "/Script/CoreUObject.Class" }]
+```
+
+The registry indices for 47 data interfaces come from the generated type map, so a call emits the
+same `Signature` the editor writes — verified against a real `Length` and `Get` on an
+Array Float3.
 
 `CustomHlsl` declares its own pins, like a material `Custom` node:
 

@@ -88,40 +88,55 @@ export default {
       type: "niagara",
       heading: "TrajParams — 스크래치 패드 모듈",
       script: "TrajParams",
-      height: 760,
-      body: `파티클 인덱스를 궤적 번호와 구간 비율로 쪼갠 뒤, 궤적 파라미터를 받아 위치와 진행률을 낸다.
-**아래는 골격이다** — 실제 모듈은 여기에 Array Data Interface 읽기 6회(\`Length\`, \`Get\` ×5)가
-붙어 \`Start\`·\`P\`·\`P2\`·\`Tm\`을 채운다. 그 호출은 에셋 스크립트가 아니라 DI 함수라서 아직 스펙으로
-표현할 수 없다.`,
-      pasteSub: "이 골격은 스크래치 패드에 그대로 붙는다. Array DI 읽기는 붙여넣은 뒤 손으로 잇는다.",
+      height: 820,
+      layout: { laneColumns: 16 },
+      body: `파티클 인덱스를 궤적 번호와 구간 비율로 쪼갠 뒤, 배열에서 그 궤적의 파라미터를 읽어
+위치와 진행률을 낸다. 실제 모듈은 배열 5개를 같은 방식으로 읽는데, 아래에는 그중 둘만 두었다 —
+나머지도 \`Get\` 노드 하나씩 늘어날 뿐 모양은 같다.`,
       nodes: [
         { id: "map", type: "Input", x: 0, y: 0 },
 
-        { id: "get", type: "MapGet", x: 300, y: 40, in: { Source: "map" }, params: [
+        { id: "get", type: "MapGet", x: 280, y: 0, in: { Source: "map" }, params: [
           ["Particles.ID.Index", "int"],
           ["Engine.Time", "float"],
           ["Module.SegmentsPerTrajectory", "int"],
           ["Module.LineArcRatio", "float"],
+          ["Module.Positions", { struct: "/Script/Niagara.NiagaraDataInterfaceArrayFloat3", wrapper: "/Script/CoreUObject.Class" }],
+          ["Module.ShapeData", { struct: "/Script/Niagara.NiagaraDataInterfaceArrayFloat4", wrapper: "/Script/CoreUObject.Class" }],
         ] },
 
-        // idx / K = 궤적 번호, (idx % K) / (K-1) = 구간 비율
-        { id: "traj", type: "Op", op: "Numeric::Div", x: 760, y: 0,
+        // idx / K = which trajectory this particle belongs to.
+        { id: "traj", type: "Op", op: "Numeric::Div", x: 820, y: 0,
           in: { A: "get:Particles.ID.Index", B: "get:Module.SegmentsPerTrajectory" } },
 
-        { id: "curve", type: "CustomHlsl", x: 760, y: 260,
-          inputs: [["Index", "int"], ["K", "int"], ["EngineTime", "float"], ["LineArcRatio", "float"]],
+        // The arrays are read through the data interface, one call per value.
+        { id: "count", type: "DataInterfaceCall", fn: "Length", x: 820, y: 190,
+          di: "/Script/Niagara.NiagaraDataInterfaceArrayFloat3", outputs: [["Num", "int"]],
+          in: { "Array interface": "get:Module.Positions" } },
+
+        { id: "start", type: "DataInterfaceCall", fn: "Get", x: 820, y: 330,
+          di: "/Script/Niagara.NiagaraDataInterfaceArrayFloat3", inputs: [["Index", "int"]], outputs: [["Value", "vec3"]],
+          in: { "Array interface": "get:Module.Positions", Index: "traj" } },
+
+        { id: "shape", type: "DataInterfaceCall", fn: "Get", x: 820, y: 500,
+          di: "/Script/Niagara.NiagaraDataInterfaceArrayFloat4", inputs: [["Index", "int"]], outputs: [["Value", "vec4"]],
+          in: { "Array interface": "get:Module.ShapeData", Index: "traj" } },
+
+        { id: "curve", type: "CustomHlsl", x: 1400, y: 200,
+          inputs: [["Index", "int"], ["K", "int"], ["EngineTime", "float"],
+            ["LineArcRatio", "float"], ["Count", "int"], ["Start", "vec3"], ["P", "vec4"]],
           outputs: [["Pos", "vec3"], ["Fill", "float"], ["Width", "float"]],
           code: [
-            "// Start / P / P2 / Tm come from the Array DI Get calls (left out of this skeleton)",
             "float T = (float)(Index % K) / (float)(K - 1);",
+            "int traj = Index / K;",
+            "if (traj >= Count) { Pos = Start; Fill = 0.0; Width = 0.0; return; }  // collapse the spare",
             "float yaw = radians(P.w);",
-            "float groundZ = Start.z - P2.x;",
-            "float3 endPt = float3(P2.y, P2.z, groundZ);   // C++ passes the impact XY in TrajParams2.yz",
+            "float3 endPt = float3(P.y, P.z, Start.z);   // C++ passes the impact XY in the array",
             "float3 pos = lerp(Start, endPt, T);",
             "float arcH = (P.x >= 0.5) ? P.z : (P.y * LineArcRatio);  // a Line arcs too, only faintly",
             "pos.z += 4.0 * arcH * T * (1.0 - T);",
             "Pos = pos;",
-            "Fill = (EngineTime - Tm.x) / max(Tm.y, 1e-3f);",
+            "Fill = EngineTime;",
             "Width = 8.0;",
           ].join("\n"),
           in: {
@@ -129,9 +144,12 @@ export default {
             K: "get:Module.SegmentsPerTrajectory",
             EngineTime: "get:Engine.Time",
             LineArcRatio: "get:Module.LineArcRatio",
+            Count: "count:Num",
+            Start: "start:Value",
+            P: "shape:Value",
           } },
 
-        { id: "set", type: "MapSet", x: 1320, y: 40,
+        { id: "set", type: "MapSet", x: 2000, y: 200,
           params: [
             ["Particles.Position", "position"],
             ["Particles.RibbonID", "int"],

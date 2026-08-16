@@ -144,6 +144,25 @@ for (const file of readdirSync(dir).filter((f) => f.toUpperCase().endsWith(".T3D
         const v = variable(m[1]);
         if (v) outs.push(v);
       }
+    } else if (b.cls === "NiagaraNodeCustomHlsl" || b.cls === "NiagaraNodeFunctionCall") {
+      // A node that carries a Signature states each variable's index there and that same
+      // variable's type path on its own pin. Joining the two *within one node* is exact — a
+      // name cannot repeat among one node's pins — which is what makes this safe where a
+      // join across the whole sweep is not. Data interface types reach the table only here,
+      // since they are never Input nodes.
+      const pinTypes = new Map();
+      for (const line of b.body.split("\n")) {
+        if (!line.includes("CustomProperties Pin")) continue;
+        const name = line.match(/PinName="([^"]*)"/)?.[1];
+        const type = line.match(/PinType\.PinSubCategoryObject="([^'"]+)'([^']+)'"/);
+        if (name && type) pinTypes.set(name, { wrapper: type[1], struct: type[2] });
+      }
+      const sig = b.body.match(/^\s*Signature=\((.*)\)\s*$/m)?.[1] ?? "";
+      for (const m of sig.matchAll(/Name="([^"]+)",TypeDefHandle=\(RegisteredTypeIndex=(\d+)\)/g)) {
+        const index = Number(m[2]);
+        const hit = pinTypes.get(m[1]);
+        if (hit && !typeIndex.has(index)) { typeIndex.set(index, hit.struct); typeKind.set(index, hit.wrapper); }
+      }
     }
   }
 
