@@ -23,7 +23,8 @@ const T = {
   position: { struct: "/Script/Niagara.NiagaraPosition",     kind: "ScriptStruct", default: "0.000,0.000,0.000" },
   numeric:  { struct: "/Script/Niagara.NiagaraNumeric",      kind: "ScriptStruct", default: "0.0" },
   map:      { struct: "/Script/Niagara.NiagaraParameterMap", kind: "ScriptStruct", default: undefined },
-  matrix:   { struct: "/Script/Niagara.NiagaraMatrix",       kind: "ScriptStruct", default: undefined },
+  // A matrix pin writes no value text at all — verified against a real copy, not an omission.
+  matrix:   { struct: "/Script/Niagara.NiagaraMatrix",       kind: "ScriptStruct", default: undefined, observed: true },
   id:       { struct: "/Script/Niagara.NiagaraID",           kind: "ScriptStruct", default: "-1,-1", observed: true },
   vec2:     { struct: "/Script/CoreUObject.Vector2f",        kind: "ScriptStruct", default: "X=0.000 Y=0.000", observed: true },
   vec3:     { struct: "/Script/CoreUObject.Vector3f",        kind: "ScriptStruct", default: "0.000,0.000,0.000", observed: true },

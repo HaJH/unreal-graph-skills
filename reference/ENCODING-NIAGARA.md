@@ -177,12 +177,11 @@ Begin Object Class=/Script/NiagaraEditor.NiagaraNodeFunctionCall Name="NiagaraNo
   pins use the op's own strings instead (`"0.0"`, `"1.0"`), so the two contexts do not agree on
   formatting and neither has to — the value text is parsed by the type's editor utility, not
   compared against anything.
-- **A matrix default is the one format still unobserved on a function-call pin.** The operator
-  table's version is known from engine source and carries the source indentation verbatim
-  (`"1.0,0.0,0.0,0.0,		0.0,1.0,…"`), but what a type-side matrix pin writes has not been seen
-  in a real copy. `niagara/generate-functions.mjs` leaves it empty rather than assuming the two
-  agree. To settle it, copy an unwired matrix pin — `/Niagara/Functions/Math/GetMatrixScale` has
-  one, named `Matrix`.
+- **A matrix pin writes no `DefaultValue` at all.** Verified against a real copy of
+  `GetMatrixTranslation` and `GetMatrixScale`: the `Matrix` input carries its type and its
+  flags and stops there. There is no type-side matrix format to discover — leaving the value
+  off is already what the editor does. Operator matrix pins are the exception and do carry
+  one, straight from the engine's own literal with the source indentation baked in.
 
 A Map Get parameter pin comes in pairs: the **output** pin (`PinName="Module.LifeTime"`,
 `Direction="EGPD_Output"`, non-zero `PersistentGuid`) and a matching **input** pin with no
