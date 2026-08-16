@@ -181,6 +181,11 @@ The emitter throws with instructions rather than emitting a wrong index.
   can reach into the row below. Give it its own `block`, or pin `y` on the nodes beside it.
 - **A pasted comment box does not drag its contents until it is reselected** — the same Slate
   behaviour `material-graph` documents.
+- **Fullscreen is removed when the page cannot have it.** The renderer's button calls
+  `requestFullscreen()` and resizes the frame whether or not the request is granted; inside
+  the artifact viewer it never is, so the frame would grow to screen height with no way back.
+  The page drops the button when `document.fullscreenEnabled` is false, and keeps it where it
+  works — the Pages demo, or the file opened directly.
 - **No one-click copy in a Claude Artifact.** The viewer never grants `clipboard-write`, so the
   button selects the block and the reader presses Ctrl+C.
 

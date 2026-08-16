@@ -175,6 +175,11 @@ whose entry is marked `pinNamesVary`, where the label depends on the node's own 
   so a constant shows its pins but not its numbers.
 - **`MaterialOutput` is display-only on paste.** Unreal allows one root per material and
   drops the pasted one; every other node still comes in.
+- **Fullscreen is removed when the page cannot have it.** The renderer's button calls
+  `requestFullscreen()` and resizes the frame whether or not the request is granted; inside
+  the artifact viewer it never is, so the frame would grow to screen height with no way back.
+  The page drops the button when `document.fullscreenEnabled` is false, and keeps it where it
+  works — the Pages demo, or the file opened directly.
 - **One-click copy is impossible in an artifact.** The viewer frames the page cross-origin
   with `sandbox="allow-scripts allow-same-origin allow-forms"` and no `allow` attribute, so
   `clipboard-write` is never delegated and `navigator.clipboard.writeText()` always rejects.

@@ -122,7 +122,7 @@ for (const [i, section] of sections.entries()) {
   // `.value` is undefined — a graph panel that stays blank with no error.
   parts.push(`  <section>
 ${heading}${body}    <div class="panel" data-graph="${id}" data-height="${height}">
-      <div class="playground"></div>
+      <div class="playground" style="min-height:${height}"></div>
     </div>
     <div class="src-head">
       <div>
@@ -154,7 +154,6 @@ const heading = spec.title ?? first?.subject(spec) ?? "Unreal Graph";
 const eyebrow = spec.eyebrow ?? (spec.sections ? "Unreal build guide" : first?.eyebrow);
 
 let html = read("page.template.html");
-html = putAll(html, "__PANEL_HEIGHT__", `${spec.height ?? 560}px`);
 html = put(html, "__TITLE__", esc(heading));
 html = put(html, "__EYEBROW__", esc(eyebrow));
 html = put(html, "__HEADING__", esc(heading));
