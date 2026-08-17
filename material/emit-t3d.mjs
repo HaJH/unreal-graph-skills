@@ -3,7 +3,7 @@
 // The output is the same text Unreal writes when you copy nodes, so it both feeds the
 // renderer and pastes back into a material with Ctrl+V. Writing it by hand is impractical:
 // every pin needs its own GUID, its type encoding, and a LinkedTo entry on both ends.
-import { NODES } from "./material-nodes.mjs";
+import { NODES, t3dString } from "./material-nodes.mjs";
 import { guid, flag } from "../lib/t3d.mjs";
 import { autoLayout, blockBoxes } from "../lib/layout.mjs";
 
@@ -171,12 +171,20 @@ export function emitT3D(spec) {
       });
     const literalProps = Object.entries(node.props ?? {}).map(([k, v]) => `${k}=${v}`);
 
+    // `note` is the comment bubble Unreal draws above a node — the place to say what a
+    // parameter is for and what range it expects, which a name alone never manages. A real
+    // export carries it twice, as `Desc` on the expression and `NodeComment` on the graph
+    // node, with the bubble flag on both; the two are written from one string here rather
+    // than guessing which half is read back on paste.
+    const note = node.note ? t3dString(node.note) : null;
+
     return [
       `Begin Object Class=/Script/UnrealEd.MaterialGraphNode Name="${nodeName(node)}" ExportPath=/Script/UnrealEd.MaterialGraphNode'"${transient}:MaterialGraph_0.${nodeName(node)}"'`,
       `   Begin Object Class=/Script/Engine.${expr} Name="${exprName(node)}" ExportPath=${ref}`,
       "   End Object",
       `   Begin Object Name="${exprName(node)}" ExportPath=${ref}`,
       ...[...wiredProps, ...literalProps].map((p) => `      ${p}`),
+      ...(note ? [`      Desc="${note}"`, "      bCommentBubbleVisible=True"] : []),
       `      MaterialExpressionEditorX=${node.x}`,
       `      MaterialExpressionEditorY=${node.y}`,
       `      MaterialExpressionGuid=${guid(`${material}/${node.id}/expr`)}`,
@@ -188,7 +196,9 @@ export function emitT3D(spec) {
       // What the editor lets you rename in place: a parameter carries its own name, and a named
       // reroute's name IS the variable. Real exports carry the flag on exactly these, and it is
       // a graph-node property rather than an expression one, so nothing recomputes it on paste.
+      ...(note ? ["   bCommentBubbleVisible=True"] : []),
       ...(/Parameter$|NamedRerouteDeclaration$/.test(expr) ? ["   bCanRenameNode=True"] : []),
+      ...(note ? [`   NodeComment="${note}"`] : []),
       ...Object.entries(def.node ?? {}).map(([k, v]) => `   ${k}=${v}`),
       `   NodeGuid=${guid(`${material}/${node.id}/node`)}`,
       ...pinsOf(node).map((pin) => inputPin(node, pin)),

@@ -262,7 +262,7 @@ NODES.Custom = {
 
 // Unreal's string export escapes the backslash first, then the quotes, then the line breaks —
 // getting that order wrong turns a multi-line HLSL body into an unterminated property.
-function t3dString(s) {
+export function t3dString(s) {
   return String(s)
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')

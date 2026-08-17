@@ -61,6 +61,14 @@ export default {
   the two halves Unreal reads can never drift apart. `values` overrides a single pin's text
   and is rarely needed — reach for it only when a pin must show something other than the
   property, never to restate the same number.
+- `note: "..."` puts a comment bubble above the node. **Give every parameter one**, saying what
+  it does and what range it expects — a name carries neither, and the artist tuning an instance
+  three months later has only the Details panel to go on. Say the range where one exists, the
+  unit where the number is not obvious, and the switch it depends on where there is one:
+  `note: "0~1. bBounceFromTime이 꺼져 있을 때만 쓰인다"`, `note: "픽셀. 음수면 바깥으로"`. One
+  line. It lands as `Desc` on the expression and `NodeComment` on the graph node, so the asset
+  keeps it and the editor draws it. Non-ASCII is safe here: the renderer parses `NodeComment`
+  without drawing it, so a note never takes the path that mangles a `Custom` body.
 - Positions are optional. Without them the emitter lays the graph out by dependency depth
   and relaxes rows toward each node's neighbours. Set `x`/`y` on a node to pin it.
 - `block: "Glow"` on a node puts it in a named block. Each block is laid out on its own, in the
