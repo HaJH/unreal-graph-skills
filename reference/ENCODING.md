@@ -36,6 +36,25 @@ place while the editor's scroll bounds are computed somewhere else entirely.
 
 GUIDs are 32 uppercase hex characters, no dashes.
 
+**Object names have to avoid the engine's.** Every property reference carries a bare name —
+`Expression=…'"MaterialExpressionFunctionInput_3"'` — and when the importer cannot resolve one
+against the objects it has just created, it falls back to a search of everything loaded. It
+often cannot resolve it: the `ExportPath`s above name a transient material, and the editor
+names the material you paste *into* (`Material_9`, say), which nothing can know when the text
+is written. `/Engine/Functions` then offers 74 other subobjects called
+`MaterialExpressionFunctionInput_3` and the search takes one of them, giving
+
+```
+LogUObjectGlobals: StaticFindFirstObject: Ambiguous object name MaterialExpressionFunctionInput_3 …
+LogProperty: Illegal TEXT reference to a private object in external package … Import failed...
+```
+
+The reference is rejected for being private and external, and the pins' `LinkedTo` repairs the
+link — which is why pastes have always come out correctly wired, output index and channel mask
+included. Being saved by a rejection is not a design, so the emitter names expressions
+`<Class>_<Material>_<index>`: the search then matches nothing rather than the wrong thing. It
+does not make the local resolution succeed, and the warnings do not all go away.
+
 ## Pins
 
 Pins are explicit `CustomProperties Pin (...)` lines — the renderer and the editor both take

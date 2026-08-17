@@ -76,7 +76,18 @@ export function emitT3D(spec) {
   autoLayout(nodes, links, spec.layout ?? {});
 
   const nodeName = (n) => `MaterialGraphNode_${n.index}`;
-  const exprName = (n) => `${NODES[n.type].expression}_${n.index}`;
+  // Every property reference carries an object's bare name, and the importer falls back to a
+  // global search when it cannot resolve one against the objects it has just created. It often
+  // cannot: the ExportPaths below name a transient material that does not exist under that name
+  // at paste time, because the editor names the one you paste into (Material_9, say) and nothing
+  // can know that in advance. The engine's own material functions then carry subobjects called
+  // MaterialExpressionFunctionInput_3 -- 74 of them for that name alone -- so a bare index lets
+  // the search land on an unrelated asset. It is rejected for being private and external and the
+  // graph pins repair the link, which is why this has always worked, but being saved by a
+  // rejection is not a design. Qualifying the name with the material lets the search match
+  // nothing instead. It does not make the local resolution succeed; it removes the wrong answer.
+  const tag = material.replace(/\W+/g, "_");
+  const exprName = (n) => `${NODES[n.type].expression}_${tag}_${n.index}`;
   const pinId = (id, pin) => guid(`${material}/${id}/${pin}`);
 
   // LinkedTo is written on both ends, so collect the peers for every pin. Pin names
@@ -219,7 +230,9 @@ export function emitT3D(spec) {
 
   const comments = [...boxes, ...(spec.comments ?? [])].map((c, i) => {
     const name = `MaterialGraphNode_Comment_${i + 1}`;
-    const expr = `MaterialExpressionComment_${i + 1}`;
+    // Tagged for the same reason the expressions above are: a comment is saved in its package,
+    // so the engine's own materials are full of MaterialExpressionComment_1.
+    const expr = `MaterialExpressionComment_${tag}_${i + 1}`;
     const path = `${transient}:MaterialGraph_0.${name}.${expr}`;
     const ref = `/Script/Engine.MaterialExpressionComment'"${path}"'`;
     const x = c.x ?? 0;
