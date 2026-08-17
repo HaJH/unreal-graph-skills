@@ -31,6 +31,10 @@ Every section takes `heading` and `body` (prose, rendered above the section's ow
 A graph section also takes `height` — a **ceiling**, not a fixed size; the panel takes the height
 its own graph needs and stops there. It may also override `pasteHeading` / `pasteSub`.
 
+All of those, along with the page's `title` and `summary`, are prose for whoever asked for the
+page — write them in the language the work is happening in. The fixed chrome, the eyebrow and the
+select button, stays English.
+
 ## `prose`
 
 The smallest markdown a guide needs: paragraphs, `- ` bullets, `**bold**`, `` `code` ``, and

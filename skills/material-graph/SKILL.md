@@ -174,6 +174,12 @@ export default {
 };
 ```
 
+**Page prose follows the conversation.** `title`, `summary`, a section's `heading` and `body`,
+and the `pasteHeading` / `pasteSub` overrides are all author-supplied: write them in the language
+the work is happening in. Only the fixed chrome — the eyebrow and the select button — stays
+English, alongside Unreal's own names. The easy mistake is inheriting the language of whichever
+example you copied from, so read the page back before publishing it.
+
 Same `build.mjs`, same publish step. `reference/BUILD-GUIDES.md` has the section types, the
 stack spec, and how to read a stack off a shipped system instead of transcribing it.
 `examples/guides/projectile-trajectory.spec.mjs` is a worked one — its material section sits beside the Niagara that feeds it.
