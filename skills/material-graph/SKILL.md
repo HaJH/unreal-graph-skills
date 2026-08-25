@@ -119,6 +119,28 @@ The declared order is the pin order, each name must be a valid HLSL identifier, 
 say the thing plainly and a dozen maths nodes would not — a signed distance field, say. See
 `examples/material/ui-rounded-rect.spec.mjs`.
 
+**Do not hand-roll what the engine already ships** — gradients, easing curves, panners, noise.
+The `Noise` expression carries Simplex, Gradient, Fast Gradient (3D texture), Value and Voronoi,
+with Levels, Turbulence and output range as node settings a reader can see and an artist can
+turn; a small tiling noise texture is cheaper again and lets the look change without touching
+the graph. A `Custom` body hides all of that in a node nobody opens.
+
+**The exception is cost on a flat graph, and it runs the opposite way to intuition.** `Noise` is
+a *3D* expression: every octave interpolates eight corners, so in a UI material — or any graph
+working on flat UVs — half of it is spent on an axis the result throws away, on top of the
+branches for turbulence and tiling. A purpose-built 2D noise can come out several times cheaper,
+which matters once the quad is card- or screen-sized. **Do not assume it in either direction:**
+put both in a throwaway material and read the instruction counts.
+
+So reach for `Custom` where the maths is genuinely specific — a distance field, an arc-length
+parameterisation, a packing trick — or where a measurement shows the engine's general version
+costs much more than the case needs. Either way, **write in the spec what the engine node could
+not do**; otherwise the next reader re-opens the question with no way to settle it.
+
+If you do hand-roll a noise, prefer an integer bit hash over `frac(sin(dot(...)))`. The sine
+form is precision-dependent: it holds up in full float on desktop, and bands or repeats once
+the coordinates grow large or the target runs half precision.
+
 **Named reroutes** are how a large graph stays readable: a declaration names a value once, and
 a usage picks it up anywhere with no wire drawn between them. Both ends derive their Guid from
 the name, so the spec only states it. **In a spec that uses blocks this is not a preference —
