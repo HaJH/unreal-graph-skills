@@ -164,10 +164,28 @@ expressions, so a spec emits a function's *body* like any other graph. Calling o
   in: { UV: "uv", Offset: "offset" } }
 ```
 
+**Read a function's pins off the asset, not off a document.** A shipped function outlives the
+guide that described it, and the names and units drift: a written guide can still say a length is
+in pixels long after the function moved to a normalised unit and started emitting a separate
+scale-per-unit output for antialiasing alone. Ask the asset — the pin list is the contract.
+
 **Build the function before the caller** — a call can only take its pins from an asset that
 already exists. The ids are optional: name the function and its inputs and the wires come in
 (verified on UE 5.8; `reference/ENCODING.md` has the Guid mechanics if a version ever stops
 doing that). Give an entry as a bare `"UV"` rather than `["UV", "8C1D…"]` and nothing is lost.
+
+**Wire every static-bool input the function declares.** A `FunctionInput` of StaticBool type
+drives a `StaticSwitch` inside the function, and leaving it unconnected makes the **whole material
+fail to compile** — `bUsePreviewValueAsDefault` does not cover it, though scalar and vector inputs
+are genuinely safe to leave off. Measured on one graph: `MF_UI_RectSDF` with `bNotch` unconnected
+compiled to 0 instructions, and connected to a `StaticBool` it compiled fine, everything else
+identical. Drive it from a `StaticBool` constant when the choice is fixed for this material, or a
+`StaticBoolParameter` when an instance should pick.
+
+The reason to know this rather than debug it: the only symptom is
+`Failed to compile Material for platform PCD3D_SM6, Default Material will be used in game`, which
+names no node and no input. There is nothing to grep for, so an unwired static bool costs a
+bisection rather than a read.
 
 Not included: Substrate/Strata slabs, the custom-output family, and composites with their pin
 bases — subgraph plumbing with its own rules.
@@ -313,6 +331,19 @@ stack spec, and how to read a stack off a shipped system instead of transcribing
   comment box or bind a usage to its declaration: the graph lands as a flat depth-sorted field with
   no blocks and no reroutes. Scripting the build is a convenience route for automation only —
   **the T3D paste is what carries the structure**, and it is what a build guide documents.
+  Three more things bite on that route, all of them quiet:
+  - Ask the expression for its input names rather than keeping a table. A node with one unnamed
+    input — `Saturate`, `OneMinus`, `ComponentMask` — reports it as the empty string, not
+    `"Input"`, and `connect_material_expressions` just returns false when the name is wrong.
+  - `ParameterGroupData` needs `modify()` on the editor-only data before the array is written
+    back; without it the write is dropped in silence, and `recompile_material` regenerates the
+    array and discards the priorities anyway.
+  - Python driven over an MCP bridge does not run on the game thread, so `IsInGameThread()`
+    ensures fire throughout. The work mostly lands, but nothing about it is guaranteed.
+  - Validate a package path before handing it to `create_asset`. A malformed one does not raise:
+    the editor opens a **modal message box**, which blocks the game thread, and every later call
+    queues behind it forever. On Windows this is easy to hit by accident — a shell that rewrites
+    POSIX-looking paths turns `/Game/UI/…` into `C:/Program Files/Git/Game/UI/…` on the way in.
 - **Keep a Custom HLSL body ASCII.** The renderer mangles non-ASCII characters when it
   prints the code inside the node — the same class of trap the project's C++ sources have with
   cp949. The T3D itself carries them fine, so this costs nothing but readable comments.
