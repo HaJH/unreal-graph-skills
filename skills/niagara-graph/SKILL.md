@@ -125,8 +125,7 @@ Declare the DI's own parameter on a Map Get with an inline type:
 ```
 
 The registry indices for 47 data interfaces come from the generated type map, so a call emits the
-same `Signature` the editor writes — verified against a real `Length` and `Get` on an
-Array Float3.
+same `Signature` the editor writes.
 
 `CustomHlsl` declares its own pins, like a material `Custom` node:
 
