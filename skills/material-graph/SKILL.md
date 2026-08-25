@@ -65,7 +65,7 @@ export default {
   it does and what range it expects — a name carries neither, and the artist tuning an instance
   three months later has only the Details panel to go on. Say the range where one exists, the
   unit where the number is not obvious, and the switch it depends on where there is one:
-  `note: "0~1. bBounceFromTime이 꺼져 있을 때만 쓰인다"`, `note: "픽셀. 음수면 바깥으로"`. One
+  `note: "0~1. Only read when bBounceFromTime is off"`, `note: "Pixels. Negative pushes it outward"`. One
   line. It lands as `Desc` on the expression and `NodeComment` on the graph node, so the asset
   keeps it and the editor draws it. Non-ASCII is safe here: the renderer parses `NodeComment`
   without drawing it, so a note never takes the path that mangles a `Custom` body.
@@ -131,6 +131,27 @@ is there too, for tidying a single wire.
 A declaration terminates its chain, so auto-layout parks it in the last column; pin `x`/`y` on
 declarations when the drawing matters.
 
+**End every root-bound value in a terminal reroute.** Unreal drops the pasted `MaterialOutput`,
+so the root pins are the one thing the reader has to wire by hand. Left as an ordinary
+`Add` somewhere in the graph, that means hunting for a node by its comment — the page ends up
+apologising for its own output instead of instructing. Name each one `Out_<PinName>` and give
+them all one colour reserved for terminals, so they read as a class rather than as more values:
+
+```js
+const TERMINAL = "(R=1.000000,G=0.150000,B=0.400000,A=1.000000)";
+
+{ id: "outColor",   type: "NamedRerouteDeclaration", name: "Out_FinalColor", color: TERMINAL,
+  in: { Input: "finalColor" } },
+{ id: "outOpacity", type: "NamedRerouteDeclaration", name: "Out_Opacity",    color: TERMINAL,
+  in: { Input: "opacity" } },
+{ id: "out", type: "MaterialOutputUI",
+  in: { "Final Color": "outColor", Opacity: "outOpacity" } },
+```
+
+A declaration has an output pin, so it drives the root directly — no usage node, and nothing
+stray left over after the paste. Pick the reserved colour so it does not collide with the
+colours the value reroutes already use.
+
 **Material functions** come in two halves. `FunctionInput`/`FunctionOutput` are ordinary
 expressions, so a spec emits a function's *body* like any other graph. Calling one needs
 `MaterialFunctionCall`, whose pins come from the asset it points at:
@@ -165,6 +186,55 @@ emit when they drift.
 <file.t3d>` prints the pin encoding of any Material Editor copy — use it to check a node
 whose entry is marked `pinNamesVary`, where the label depends on the node's own settings.
 
+## Parameter groups
+
+A material with more than a handful of parameters is unusable in the instance editor until they
+are grouped. Grouping is two separate things stored in two separate places, and only one of them
+travels with the graph:
+
+| | Stored on | Travels in the T3D |
+|---|---|---|
+| Which group a parameter is in, and its order **within** that group | the expression | **yes** |
+| The order the **groups themselves** are listed | the asset (`ParameterGroupData`) | **no** |
+
+Set the first on any parameter expression through ordinary `props` — `SortPriority` is an int, and
+`" | "` in a name nests one group under another:
+
+```js
+{ id: "edgeWidth", type: "ScalarParameter",
+  props: { DefaultValue: "0.060000", ParameterName: '"EdgeWidth"',
+           Group: '"Burn | Edge"', SortPriority: "0" } }
+```
+
+Do not write that on each node by hand. Keep one table and derive the props from it, so a new
+parameter cannot be added to the graph while being forgotten in the grouping:
+
+```js
+const GROUP = { EdgeWidth: ["Burn | Edge", 0], EdgeColorInner: ["Burn | Edge", 1], /* … */ };
+
+const grouped = (nodes) => nodes.map((n) => {
+  const name = n.props?.ParameterName?.replace(/"/g, "");
+  const g = name && GROUP[name];
+  return g ? { ...n, props: { ...n.props, Group: `"${g[0]}"`, SortPriority: String(g[1]) } } : n;
+});
+```
+
+The second — group order — has no home in the graph. Left unset every group sits at priority 0
+and the editor falls back to **alphabetical**, which is almost never the order the parameters
+should be read in. It is a struct array on the material, so it goes on the page as its own paste
+block (see *One paste block per destination* below), built from the same source as the graph:
+
+```js
+const GROUP_ORDER = ["Timing", "Burn", "Burn | Edge", "Colour", "Shape"];
+
+const groupPriorityLiteral = () =>
+  "(" + GROUP_ORDER.map((g, i) => `(GroupName="${g}",GroupSortPriority=${i})`).join(",") + ")";
+```
+
+That literal pastes onto **the output node's Details → Parameter Group Priorities**. Order the
+groups by what the artist reaches for first, not alphabetically — that is the whole point of
+setting it, and it means group names never need a numeric prefix to sort.
+
 ## Build guides — more than one section
 
 A guide for an effect is prose, an emitter stack and several graphs on one page, material and
@@ -188,6 +258,31 @@ the work is happening in. Only the fixed chrome — the eyebrow and the select b
 English, alongside Unreal's own names. The easy mistake is inheriting the language of whichever
 example you copied from, so read the page back before publishing it.
 
+**Write the page to the person doing the work.** A `body` is an instruction — "paste into an
+empty material, then wire `Out_FinalColor` into `Final Color`" — not a defence of how the graph
+was built. Design rationale, pipeline mechanics and what the emitter does belong in the spec's
+own comments or in the project's doc; on the page they read as the author talking to themselves.
+The test: every sentence should tell the reader something they have to *do* or *decide*.
+
+**One paste block per destination.** A graph's T3D carries expressions only. Anything stored on
+the asset rather than on an expression — group display order (*Parameter groups*, above) is the
+usual one — does not travel with it, and silently comes out alphabetical or empty. Give each such
+value its own block with its own copy button, using the same markup the graph blocks use so the
+page's existing handler picks it up:
+
+```js
+{ type: "prose", heading: "파라미터 그룹 순서", body: `
+<div class="src-head">
+  <div><h3>Paste the group order</h3><p class="sub">출력 노드 선택 → Details 의
+  Parameter Group Priorities 위에서 Ctrl+V.</p></div>
+  <button type="button" data-copies="group-priorities">Select array</button>
+</div>
+<pre id="group-priorities">${literal}</pre>` }
+```
+
+Generate the literal and any list beside it from the same constant the graph nodes read, so the
+page cannot drift from the material as parameters are added.
+
 Same `build.mjs`, same publish step. `reference/BUILD-GUIDES.md` has the section types, the
 stack spec, and how to read a stack off a shipped system instead of transcribing it.
 `examples/guides/projectile-trajectory.spec.mjs` is a worked one — its material section sits beside the Niagara that feeds it.
@@ -209,7 +304,13 @@ stack spec, and how to read a stack off a shipped system instead of transcribing
 - **Inline value fields are not drawn.** bue-render disables pin inputs for material nodes,
   so a constant shows its pins but not its numbers.
 - **`MaterialOutput` is display-only on paste.** Unreal allows one root per material and
-  drops the pasted one; every other node still comes in.
+  drops the pasted one; every other node still comes in. End each root-bound value in an
+  `Out_<PinName>` terminal reroute so the reader has something named to wire it back to.
+- **A material built through the Python API comes out structureless.** `MaterialExpressionComment`'s
+  `SizeX`/`SizeY` and `NamedRerouteUsage`'s `Declaration` are protected, so a script cannot size a
+  comment box or bind a usage to its declaration: the graph lands as a flat depth-sorted field with
+  no blocks and no reroutes. Scripting the build is a convenience route for automation only —
+  **the T3D paste is what carries the structure**, and it is what a build guide documents.
 - **Keep a Custom HLSL body ASCII.** The renderer mangles non-ASCII characters when it
   prints the code inside the node — the same class of trap the project's C++ sources have with
   cp949. The T3D itself carries them fine, so this costs nothing but readable comments.
