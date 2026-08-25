@@ -72,6 +72,10 @@ export default {
   why the spec has to state them.
 - Positions are optional; the graph is laid out by dependency depth. Set `x`/`y` to pin a node,
   `block: "Name"` to group nodes into a stage with a comment box round it.
+- **No wire crosses a block boundary.** Blocks can land far apart in the drawing, so one direct
+  `in:` between them sweeps an edge over everything in between. Niagara has no named reroute —
+  the map is the equivalent: put a **second Map Get** in the consuming block and read the value
+  by name there. Symptom: tidy boxes with a few long wires running past them.
 - `stage` draws the simulation stage row. The default list is Emitter Spawn, Emitter Update,
   Particle Spawn, Particle Update, Render; naming a stage outside it (a simulation stage, an
   event handler) appends it rather than failing. Override the whole list with `stages: [...]`.

@@ -79,6 +79,14 @@ export default {
   `blockColors: { Glow: "(R=..,G=..,B=..,A=0.300000)" }`. Nodes with no `block` share one
   unnamed band and get no box, so existing specs are unaffected. `comments` is still there for
   a box that is not a block, and takes explicit `x`/`y`/`w`/`h`.
+- **No wire crosses a block boundary.** Blocks are packed and wrapped across the page, so two
+  blocks that read as neighbours in the spec can land far apart in the drawing — one direct
+  `in:` between them draws an edge over everything in between and undoes what the blocks are
+  for. A value another block needs gets a `NamedRerouteDeclaration` where it is produced and a
+  `NamedRerouteUsage` where it is consumed; a parameter can instead be placed a second time in
+  the consuming block, since parameters are matched by name. Symptom: the page has tidy boxes
+  and a few long wires sweeping past them. Worth asserting in a project's build script — the
+  check is one pass comparing each node's `block` against the `block` of every node it reads.
 - `layout: { laneColumns: 28 }` widens the page a graph wraps at (default 24 columns). Raise it
   for a wide monitor or a graph with many small blocks; the other knobs are `columnGap`,
   `rowGap`, `bandGap` and `bandColumns`.
@@ -113,7 +121,9 @@ say the thing plainly and a dozen maths nodes would not — a signed distance fi
 
 **Named reroutes** are how a large graph stays readable: a declaration names a value once, and
 a usage picks it up anywhere with no wire drawn between them. Both ends derive their Guid from
-the name, so the spec only states it.
+the name, so the spec only states it. **In a spec that uses blocks this is not a preference —
+it is how one block reaches another**, because a direct wire between blocks draws across the
+whole page.
 
 ```js
 { id: "pulseDecl", type: "NamedRerouteDeclaration", name: "Pulse", in: { Input: "sine" } },

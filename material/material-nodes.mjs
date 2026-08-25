@@ -85,10 +85,25 @@ const ALIASES = {
   Cosine: "Cosine",
 };
 
+// A parameter variant declares no pins of its own -- it inherits them from the sample node it
+// specialises -- and the generator only reads what a class declares, so these arrive empty.
+// Without this they cannot take a UV or give back a channel.
+const INHERITS_PINS = {
+  TextureSampleParameter2D: "TextureSample",
+  TextureSampleParameter2DArray: "TextureSample",
+  TextureSampleParameterCube: "TextureSample",
+  TextureSampleParameterVolume: "TextureSample",
+  TextureSampleParameterSubUV: "TextureSample",
+};
+
 const build = () => {
   const nodes = {};
-  for (const [short, api] of Object.entries(UE_EXPRESSIONS)) {
-    const tweak = TWEAKS[short] ?? {};
+  for (const [short, rawApi] of Object.entries(UE_EXPRESSIONS)) {
+    const base = INHERITS_PINS[short];
+    const api = base && rawApi.in.length === 0
+      ? { ...UE_EXPRESSIONS[base], ...rawApi, in: UE_EXPRESSIONS[base].in, out: UE_EXPRESSIONS[base].out }
+      : rawApi;
+    const tweak = TWEAKS[base ?? short] ?? {};
     const values = VALUE_PINS[short];
 
     const wired = api.in
