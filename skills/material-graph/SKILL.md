@@ -132,10 +132,8 @@ A declaration terminates its chain, so auto-layout parks it in the last column; 
 declarations when the drawing matters.
 
 **End every root-bound value in a terminal reroute.** Unreal drops the pasted `MaterialOutput`,
-so the root pins are the one thing the reader has to wire by hand. Left as an ordinary
-`Add` somewhere in the graph, that means hunting for a node by its comment — the page ends up
-apologising for its own output instead of instructing. Name each one `Out_<PinName>` and give
-them all one colour reserved for terminals, so they read as a class rather than as more values:
+so the root pins are the one thing the reader wires by hand, and they need something named to
+wire from. Name each one `Out_<PinName>` and give them all one colour reserved for terminals:
 
 ```js
 const TERMINAL = "(R=1.000000,G=0.150000,B=0.400000,A=1.000000)";
@@ -149,8 +147,7 @@ const TERMINAL = "(R=1.000000,G=0.150000,B=0.400000,A=1.000000)";
 ```
 
 A declaration has an output pin, so it drives the root directly — no usage node, and nothing
-stray left over after the paste. Pick the reserved colour so it does not collide with the
-colours the value reroutes already use.
+stray left over after the paste. Keep the terminal colour off the palette the value reroutes use.
 
 **Material functions** come in two halves. `FunctionInput`/`FunctionOutput` are ordinary
 expressions, so a spec emits a function's *body* like any other graph. Calling one needs
@@ -165,9 +162,8 @@ expressions, so a spec emits a function's *body* like any other graph. Calling o
 ```
 
 **Read a function's pins off the asset, not off a document.** A guide that grew alongside a
-function often describes several of its versions, and the superseded sections stay on the page:
-read the first half and you can come away with a contract the same document retracts further
-down — units included. Ask the asset, and cite what it answered rather than what a guide said.
+function describes several of its versions at once, superseded sections included. Ask the asset,
+and cite what it answered.
 
 **Build the function before the caller** — a call can only take its pins from an asset that
 already exists. The ids are optional: name the function and its inputs and the wires come in
@@ -175,17 +171,13 @@ already exists. The ids are optional: name the function and its inputs and the w
 doing that). Give an entry as a bare `"UV"` rather than `["UV", "8C1D…"]` and nothing is lost.
 
 **Wire every static-bool input the function declares.** A `FunctionInput` of StaticBool type
-drives a `StaticSwitch` inside the function, and leaving it unconnected makes the **whole material
-fail to compile** — `bUsePreviewValueAsDefault` does not cover it, though scalar and vector inputs
-are genuinely safe to leave off. Measured on one graph: `MF_UI_RectSDF` with `bNotch` unconnected
-compiled to 0 instructions, and connected to a `StaticBool` it compiled fine, everything else
-identical. Drive it from a `StaticBool` constant when the choice is fixed for this material, or a
-`StaticBoolParameter` when an instance should pick.
+drives a `StaticSwitch` inside the function, and leaving it unconnected makes the whole material
+fail to compile — `bUsePreviewValueAsDefault` does not cover it, though scalar and vector inputs
+are safe to leave off. Drive it from a `StaticBool` when the choice is fixed for this material,
+or a `StaticBoolParameter` when an instance should pick.
 
-The reason to know this rather than debug it: the only symptom is
-`Failed to compile Material for platform PCD3D_SM6, Default Material will be used in game`, which
-names no node and no input. There is nothing to grep for, so an unwired static bool costs a
-bisection rather than a read.
+Recognise it by the symptom: `Failed to compile Material for platform PCD3D_SM6, Default Material
+will be used in game`, naming no node and no input. Nothing else in the log points at it.
 
 Not included: Substrate/Strata slabs, the custom-output family, and composites with their pin
 bases — subgraph plumbing with its own rules.
@@ -331,7 +323,7 @@ stack spec, and how to read a stack off a shipped system instead of transcribing
   comment box or bind a usage to its declaration: the graph lands as a flat depth-sorted field with
   no blocks and no reroutes. Scripting the build is a convenience route for automation only —
   **the T3D paste is what carries the structure**, and it is what a build guide documents.
-  Three more things bite on that route, all of them quiet:
+  Four things fail quietly on that route:
   - Ask the expression for its input names rather than keeping a table. A node with one unnamed
     input — `Saturate`, `OneMinus`, `ComponentMask` — reports it as the empty string, not
     `"Input"`, and `connect_material_expressions` just returns false when the name is wrong.
@@ -341,12 +333,11 @@ stack spec, and how to read a stack off a shipped system instead of transcribing
   - Python driven over an MCP bridge does not run on the game thread, so `IsInGameThread()`
     ensures fire throughout. The work mostly lands, but nothing about it is guaranteed.
   - Validate a package path before handing it to `create_asset`. A malformed one does not raise:
-    the editor opens a **modal message box**, which blocks the game thread, and every later call
-    queues behind it forever. On Windows this is easy to hit by accident — a shell that rewrites
-    POSIX-looking paths turns `/Game/UI/…` into `C:/Program Files/Git/Game/UI/…` on the way in.
+    the editor opens a modal message box, which blocks the game thread, and every later call
+    queues behind it. A shell that rewrites POSIX-looking paths is the usual way one gets in.
 - **Keep a Custom HLSL body ASCII.** The renderer mangles non-ASCII characters when it
-  prints the code inside the node — the same class of trap the project's C++ sources have with
-  cp949. The T3D itself carries them fine, so this costs nothing but readable comments.
+  prints the code inside the node. The T3D itself carries them fine, so this costs nothing but
+  readable comments.
 - **Fullscreen is removed when the page cannot have it.** The renderer's button calls
   `requestFullscreen()` and resizes the frame whether or not the request is granted; inside
   the artifact viewer it never is, so the frame would grow to screen height with no way back.
