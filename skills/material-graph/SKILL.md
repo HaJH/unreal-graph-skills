@@ -164,10 +164,10 @@ expressions, so a spec emits a function's *body* like any other graph. Calling o
   in: { UV: "uv", Offset: "offset" } }
 ```
 
-**Read a function's pins off the asset, not off a document.** A shipped function outlives the
-guide that described it, and the names and units drift: a written guide can still say a length is
-in pixels long after the function moved to a normalised unit and started emitting a separate
-scale-per-unit output for antialiasing alone. Ask the asset — the pin list is the contract.
+**Read a function's pins off the asset, not off a document.** A guide that grew alongside a
+function often describes several of its versions, and the superseded sections stay on the page:
+read the first half and you can come away with a contract the same document retracts further
+down — units included. Ask the asset, and cite what it answered rather than what a guide said.
 
 **Build the function before the caller** — a call can only take its pins from an asset that
 already exists. The ids are optional: name the function and its inputs and the wires come in
