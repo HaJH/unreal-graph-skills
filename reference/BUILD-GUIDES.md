@@ -11,7 +11,7 @@ Both skills build these. `build.mjs` takes the same spec file either way.
 
 ```js
 export default {
-  title: "투사체 궤적 인디케이터",
+  title: "Projectile Trajectory Indicator",
   summary: "One line under the heading.",
   eyebrow: "Unreal build guide",        // optional; defaults to this when `sections` is present
 

@@ -4,29 +4,31 @@
 // rather than transcribed from the written guide, which predates a round of tuning. Where the
 // two disagree the asset wins, and the difference is called out below.
 export default {
-  title: "투사체 궤적 인디케이터",
-  summary: "고정 풀 파티클을 배열 데이터로 리본 궤적에 매핑하는 이펙트 — NS_ProjectileTrajectory.",
+  title: "Projectile Trajectory Indicator",
+  summary: "A fixed pool of particles mapped onto ribbon trajectories from array data "
+    + "— NS_ProjectileTrajectory.",
   eyebrow: "Unreal build guide",
 
   sections: [
     {
       type: "prose",
-      heading: "무엇을 만드는가",
-      body: `C++가 궤적 N개를 배열로 밀어 넣으면, 파티클 하나가 궤적의 한 점이 되어 리본으로 이어진다.
-파티클은 죽지 않는 **고정 풀**이고, 활성 궤적 수보다 남는 파티클은 폭을 0으로 접어 숨긴다.
+      heading: "What this builds",
+      body: `C++ pushes N trajectories in as arrays; each particle becomes one point on a
+trajectory and the ribbon joins them up. The particles are a **fixed pool** that never dies,
+and any left over beyond the active trajectory count are folded to zero width instead.
 
-- 배열 데이터는 User Parameter의 Array Data Interface 5개로 들어온다
-- 파티클마다 \`Particles.ID.Index\`로 자기 몫의 궤적과 구간을 계산한다
-- \`Particles.RibbonID\`로 궤적을 분리해 리본이 서로 꼬이지 않게 한다`,
+- The array data arrives as five Array Data Interfaces on User Parameters
+- Each particle works out which trajectory and which segment is its own from \`Particles.ID.Index\`
+- \`Particles.RibbonID\` keeps the trajectories apart so the ribbons cannot tangle`,
     },
 
     {
       type: "stack",
-      heading: "이미터 스택",
+      heading: "Emitter stack",
       emitter: "NS_ProjectileTrajectory",
       note: "Ribbon Renderer · CPUSim · Fixed Bounds",
-      body: `스테이지 순서와 모듈 순서는 실제 에셋에서 읽었다. \`TrajParams\`가 이 이펙트의 본체인
-스크래치 패드 모듈이고, 나머지는 엔진 기본 모듈이다.`,
+      body: `Stage order and module order were read off the shipped asset. \`TrajParams\` is the
+scratch pad module that holds the effect itself; everything else is an engine module.`,
       stages: [
         {
           stage: "Emitter Update",
@@ -36,7 +38,7 @@ export default {
               ["Loop Behavior", "Infinite"],
               ["Loop Duration", "1.0"],
             ] },
-            { module: "Spawn Burst Instantaneous", note: "고정 풀", inputs: [
+            { module: "Spawn Burst Instantaneous", note: "fixed pool", inputs: [
               ["Spawn Time", "0.0"],
               ["Spawn Count", "MaxTrajectoryCount × SegmentsPerTrajectory"],
             ] },
@@ -59,7 +61,7 @@ export default {
               ["Lifetime", { link: "Particles.Lifetime" }],
               ["DeltaTime", { link: "Engine.DeltaTime" }],
             ] },
-            { module: "TrajParams", scratch: true, note: "스크래치 패드 — 아래 그래프",
+            { module: "TrajParams", scratch: true, note: "scratch pad — graph below",
               inputs: [
                 ["LineArcRatio", "0.03"],
                 ["ShapeData", { link: "User.TrajParams" }],
@@ -86,13 +88,14 @@ export default {
 
     {
       type: "niagara",
-      heading: "TrajParams — 스크래치 패드 모듈",
+      heading: "TrajParams — the scratch pad module",
       script: "TrajParams",
       height: 820,
       layout: { laneColumns: 16 },
-      body: `파티클 인덱스를 궤적 번호와 구간 비율로 쪼갠 뒤, 배열에서 그 궤적의 파라미터를 읽어
-위치와 진행률을 낸다. 실제 모듈은 배열 5개를 같은 방식으로 읽는데, 아래에는 그중 둘만 두었다 —
-나머지도 \`Get\` 노드 하나씩 늘어날 뿐 모양은 같다.`,
+      body: `Splits the particle index into a trajectory number and a position along it, then
+reads that trajectory's parameters out of the arrays to produce a position and a fill ratio. The
+real module reads five arrays the same way; only two are drawn below — the rest add one \`Get\`
+node each and change nothing about the shape.`,
       nodes: [
         { id: "map", type: "Input", x: 0, y: 0 },
 
@@ -167,16 +170,17 @@ export default {
 
     {
       type: "material",
-      heading: "M_ProjectileTrajectory — 리본 머티리얼",
+      heading: "M_ProjectileTrajectory — the ribbon material",
       material: "M_ProjectileTrajectory",
       height: 900,
-      body: `리본의 UV를 받아 코어 글로우 · 흐르는 하이라이트 · 착탄 임박 플래시를 한 번에 합성한다.
-    계산은 Custom 노드 하나에 모여 있고, 그 결과 \`float2\`를 마스크로 갈라 Emissive와 Opacity로 보낸다.
-    튜닝 손잡이 7개는 전부 스칼라 파라미터라 MI에서 만진다.`,
+      body: `Takes the ribbon's UV and composites the core glow, the travelling highlight and
+    the about-to-land flash in one pass. The maths sits in a single Custom node, and its
+    \`float2\` result is split by a mask into Emissive and Opacity. All seven tuning knobs are
+    scalar parameters, so they are set on the MI.`,
       layout: { laneColumns: 12 },
 
       nodes: [
-        // --- 입력 ---
+        // --- inputs ---
         { id: "uv", type: "TextureCoordinate", block: "Inputs" },
         { id: "dyn", type: "DynamicParameter", block: "Inputs" },
         { id: "fillMask", type: "ComponentMask", block: "Inputs", in: { Input: "dyn.Output" },
@@ -184,7 +188,7 @@ export default {
         { id: "declFill", type: "NamedRerouteDeclaration", name: "FillProgress", block: "Inputs",
           in: { Input: "fillMask" } },
 
-        // --- MI 손잡이 ---
+        // --- MI knobs ---
         { id: "sweep", type: "ScalarParameter", block: "Tuning",
           props: { DefaultValue: "3.000000", ParameterName: '"SweepCount"' } },
         { id: "baseOp", type: "ScalarParameter", block: "Tuning",
@@ -200,7 +204,7 @@ export default {
         { id: "endFade", type: "ScalarParameter", block: "Tuning",
           props: { DefaultValue: "0.400000", ParameterName: '"EndFadeStart"' } },
 
-        // --- 합성 ---
+        // --- composite ---
         { id: "useFill", type: "NamedRerouteUsage", of: "FillProgress", block: "Composite" },
         { id: "hlsl", type: "Custom", desc: "TrajectoryShape", outputType: "CMOT_Float2",
           block: "Composite",
@@ -245,7 +249,7 @@ export default {
         { id: "declOp", type: "NamedRerouteDeclaration", name: "Opacity", block: "Composite",
           in: { Input: "opMask" } },
 
-        // --- 색 ---
+        // --- colour ---
         { id: "flash", type: "VectorParameter", block: "Colour",
           props: { ParameterName: '"FlashColor"' } },
         { id: "declFlash", type: "NamedRerouteDeclaration", name: "FlashColor", block: "Colour",
@@ -259,7 +263,7 @@ export default {
         { id: "declOpOut", type: "NamedRerouteDeclaration", name: "OpacityOutput", block: "Colour",
           in: { Input: "useOp" } },
 
-        // --- 출력 ---
+        // --- output ---
         { id: "useEmOut", type: "NamedRerouteUsage", of: "EmissiveOutput", block: "Output" },
         { id: "useOpOut", type: "NamedRerouteUsage", of: "OpacityOutput", block: "Output" },
         { id: "out", type: "MaterialOutput", block: "Output",
@@ -269,10 +273,10 @@ export default {
 
     {
       type: "prose",
-      heading: "함정",
-      body: `- **\`Engine.Emitter.ExecutionIndex\`를 파티클 인덱스로 쓰지 말 것.** 단일 이미터에서는 항상 0이라 전 파티클이 배열[0]만 읽는다. 파티클별 인덱스는 \`Particles.ID.Index\`다
-- 리본이 꼬이면 \`Particles.RibbonID\`가 궤적별로 갈리는지부터 본다
-- 남는 파티클은 \`Particles.RibbonWidth = 0\`으로 접는다 — 리본에는 Scale 0이 없다`,
+      heading: "Traps",
+      body: `- **Do not use \`Engine.Emitter.ExecutionIndex\` as the particle index.** In a single emitter it is always 0, so every particle reads array[0]. The per-particle index is \`Particles.ID.Index\`
+- If the ribbons tangle, check first that \`Particles.RibbonID\` differs per trajectory
+- Fold the spare particles away with \`Particles.RibbonWidth = 0\` — a ribbon has no Scale 0`,
     },
   ],
 };

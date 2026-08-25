@@ -201,21 +201,23 @@ Niagara together. Give the spec a `sections` array instead of nodes at the top l
 
 ```js
 export default {
-  title: "투사체 궤적 인디케이터",
+  title: "Projectile Trajectory Indicator",
   sections: [
-    { type: "prose",    heading: "무엇을 만드는가", body: "…" },
-    { type: "stack",    heading: "이미터 스택", emitter: "NS_X", stages: [ … ] },
+    { type: "prose",    heading: "What this builds", body: "…" },
+    { type: "stack",    heading: "Emitter stack", emitter: "NS_X", stages: [ … ] },
     { type: "niagara",  heading: "…", script: "SNM_X", nodes: [ … ] },
     { type: "material", heading: "…", material: "M_X", nodes: [ … ] },
   ],
 };
 ```
 
-**Page prose follows the conversation.** `title`, `summary`, a section's `heading` and `body`,
-and the `pasteHeading` / `pasteSub` overrides are all author-supplied: write them in the language
-the work is happening in. Only the fixed chrome — the eyebrow and the select button — stays
-English, alongside Unreal's own names. The easy mistake is inheriting the language of whichever
-example you copied from, so read the page back before publishing it.
+**This skill is written in English; the page you build is not.** `title`, `summary`, a section's
+`heading` and `body`, and the `pasteHeading` / `pasteSub` overrides are author-supplied prose —
+**write them in the language the user is speaking**, translating as you go. Every example here is
+English so that nothing about the skill implies a language for the page; copying an example's
+wording verbatim into a page for a Korean-speaking user is the mistake this note exists to
+prevent. Only the fixed chrome — the eyebrow and the select button — stays English, alongside
+Unreal's own names. Read the page back before publishing it.
 
 Same `build.mjs`, same publish step. `reference/BUILD-GUIDES.md` has the section types, the
 stack spec, and how to read a stack off a shipped system instead of transcribing it.
