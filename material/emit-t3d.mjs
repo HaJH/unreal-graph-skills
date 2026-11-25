@@ -16,6 +16,11 @@ const PIN_TYPE_TAIL =
 // A channel tap is carried by the mask bits on the wire, not by the output index: an
 // expression like TextureSample compiles the whole RGBA whichever output you pull from, and
 // FExpressionInput's Mask is what swizzles it down. Unreal writes only the bits that are set.
+const NOT_RENAMABLE = new Set([
+  "MaterialExpressionCollectionParameter",
+  "MaterialExpressionDynamicParameter",
+]);
+
 const MASK_FIELDS = ["MaskR", "MaskG", "MaskB", "MaskA"];
 const maskFields = (bits) =>
   bits ? `,Mask=1${[...bits].map((b, i) => (b === "1" ? `,${MASK_FIELDS[i]}=1` : "")).join("")}` : "";
@@ -212,8 +217,11 @@ export function emitT3D(spec) {
       // What the editor lets you rename in place: a parameter carries its own name, and a named
       // reroute's name IS the variable. Real exports carry the flag on exactly these, and it is
       // a graph-node property rather than an expression one, so nothing recomputes it on paste.
+      // CollectionParameter and DynamicParameter end in "Parameter" but derive straight from
+      // UMaterialExpression and keep CanRenameNode() false; with the flag set, the editor draws an
+      // editable title, calls GetEditableName() and hits its check(false) -- the editor crashes.
       ...(note ? ["   bCommentBubbleVisible=True"] : []),
-      ...(/Parameter$|NamedRerouteDeclaration$/.test(expr) ? ["   bCanRenameNode=True"] : []),
+      ...(/Parameter$|NamedRerouteDeclaration$/.test(expr) && !NOT_RENAMABLE.has(expr) ? ["   bCanRenameNode=True"] : []),
       ...(note ? [`   NodeComment="${note}"`] : []),
       ...Object.entries(def.node ?? {}).map(([k, v]) => `   ${k}=${v}`),
       `   NodeGuid=${guid(`${material}/${node.id}/node`)}`,

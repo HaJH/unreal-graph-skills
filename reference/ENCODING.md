@@ -190,6 +190,12 @@ A graph-node property, so nothing recomputes it on paste. Real exports carry
 else. Leave it off and those nodes arrive unrenameable — which matters most for a reroute,
 whose name *is* the variable.
 
+Not every class ending in `Parameter` is a parameter. `MaterialExpressionCollectionParameter`
+(reads a Material Parameter Collection) and `MaterialExpressionDynamicParameter` derive straight
+from `UMaterialExpression` and keep `CanRenameNode()` false. Put the flag on them and the editor
+crashes the moment it draws the node: the editable title calls `GetEditableName()`, whose base
+version is `check(false)`. The emitter leaves these two off.
+
 ## Checking a new node type
 
 Add the node in the Material Editor, wire something into each input, copy it, save the text,
