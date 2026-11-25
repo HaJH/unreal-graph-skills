@@ -208,7 +208,10 @@ doing that). Give an entry as a bare `"UV"` rather than `["UV", "8C1D…"]` and 
 drives a `StaticSwitch` inside the function, and leaving it unconnected makes the whole material
 fail to compile — `bUsePreviewValueAsDefault` does not cover it, though scalar and vector inputs
 are safe to leave off. Drive it from a `StaticBool` when the choice is fixed for this material,
-or a `StaticBoolParameter` when an instance should pick.
+or a `StaticBoolParameter` when an instance should pick. Not a `StaticSwitchParameter`: that node
+is a switch with its own `A`/`B` inputs, so used only for its value it fails with
+`(Node StaticSwitchParameter) Missing A input` the moment its branch is compiled — which is only
+when an instance turns the path on, so the master's default permutation still compiles.
 
 Recognise it by the symptom: `Failed to compile Material for platform PCD3D_SM6, Default Material
 will be used in game`, naming no node and no input. Nothing else in the log points at it.
