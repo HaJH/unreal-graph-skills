@@ -275,6 +275,29 @@ NODES.Custom = {
   ],
 };
 
+// ---- Convert ------------------------------------------------------------------------
+// Convert also keeps its inputs in an array (`ConvertInputs`), so the generated entry has no
+// input pins at all. The editor rebuilds that array from the graph pins on paste, so a wire
+// written only into the property is dropped. One pin per input, named the way the editor names
+// them — Input, Input2, Input3 … — with the count from the spec. ConvertOutputs and
+// ConvertMappings carry no wires and stay in `props`.
+//
+//   { id: "rgb", type: "Convert", inputCount: 3, in: { Input: "r", Input2: "g", Input3: "b" },
+//     props: { "ConvertOutputs(0)": "(Type=Vector3)", … } }
+const convertPins = (node) =>
+  Array.from({ length: node.inputCount ?? 1 }, (_, i) => (i === 0 ? "Input" : `Input${i + 1}`));
+
+NODES.Convert = {
+  expression: "MaterialExpressionConvert",
+  pins: (node) => convertPins(node).map((name) => [name, {}]),
+  in: [],
+  out: [["Output", "", { plain: true }]],
+  buildProps: (node, wiredOf) => convertPins(node).map((name, i) => {
+    const source = wiredOf(name);
+    return source ? `ConvertInputs(${i})=(ExpressionInput=(${source.ref}))` : `ConvertInputs(${i})=()`;
+  }),
+};
+
 // Unreal's string export escapes the backslash first, then the quotes, then the line breaks —
 // getting that order wrong turns a multi-line HLSL body into an unterminated property.
 export function t3dString(s) {
