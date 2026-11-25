@@ -119,6 +119,23 @@ The declared order is the pin order, each name must be a valid HLSL identifier, 
 say the thing plainly and a dozen maths nodes would not — a signed distance field, say. See
 `examples/material/ui-rounded-rect.spec.mjs`.
 
+`Convert` (the editor's Break / Make Float*N* nodes) is shaped per instance too. `inputTypes`
+gives each input's type — `Scalar`, `Vector2`, `Vector3`, `Vector4` — and `outputCount` how many
+outputs it has; the pins are numbered `Input`, `Input2` … and `Output`, `Output2` …. Output types
+and the component mappings go in `props`, and only the entries that differ from the default:
+
+```js
+{ id: "split", type: "Convert", inputTypes: ["Vector4"], outputCount: 4,
+  in: { Input: "mask.RGBA" },
+  props: { "ConvertMappings(1)": "(InputComponentIndex=1,OutputIndex=1)", …,
+           NodeName: '"Break Float4"' } }
+{ id: "rough", type: "Multiply", in: { A: "split.Output2", B: "scale" } }
+```
+
+Declare the outputs by `outputCount`, not by writing `ConvertOutputs` entries: the editor gives
+the node as many outputs as that array is long, and the emitter pads it to the count. See
+`examples/material/packed-mask-split.spec.mjs`.
+
 **Don't rewrite a primitive the engine already ships in the right shape** — gradients, easing
 curves, panners, and `Noise` where the graph really is 3D. Reproducing those in HLSL buys
 nothing and hides settings in a node nobody opens.
@@ -227,7 +244,8 @@ the inline literal pins (a Constant's number is not an `FExpressionInput`), Text
 collapsed pins, and `pinDefaults`. A value lives *twice* in T3D, as an expression property
 and as the pin's `DefaultValue`, and Unreal reads the pin when pasting, so a node whose two
 copies disagree renders correctly but pastes in with the wrong number. `emitT3D` refuses to
-emit when they drift.
+emit when they drift, comparing only the channels the pin shows — a Constant3Vector's alpha
+lives in the property and never on its rgb pin.
 
 `reference/ENCODING.md` documents the serialisation format. `node reference/survey.mjs
 <file.t3d>` prints the pin encoding of any Material Editor copy — use it to check a node

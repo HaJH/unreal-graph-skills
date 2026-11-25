@@ -276,26 +276,73 @@ NODES.Custom = {
 };
 
 // ---- Convert ------------------------------------------------------------------------
-// Convert also keeps its inputs in an array (`ConvertInputs`), so the generated entry has no
-// input pins at all. The editor rebuilds that array from the graph pins on paste, so a wire
-// written only into the property is dropped. One pin per input, named the way the editor names
-// them — Input, Input2, Input3 … — with the count from the spec. ConvertOutputs and
-// ConvertMappings carry no wires and stay in `props`.
+// Convert keeps both ends in arrays, so the generated entry has no pins at all. Its inputs are
+// `ConvertInputs`, which the editor rebuilds from the graph pins on paste, so a wire written only
+// into the property is dropped. Its outputs are `Outputs`, which the expression rebuilds from
+// `ConvertOutputs.Num()` whenever anything asks for them, so a consumer can reach exactly as many
+// outputs as ConvertOutputs has entries and an OutputIndex past that reads nothing. Neither side
+// has pin names: the editor numbers them Input, Input2 … and Output, Output2 …, and since no
+// RequiredInput meta reaches an input inside a struct array, every input is a required pin.
 //
-//   { id: "rgb", type: "Convert", inputCount: 3, in: { Input: "r", Input2: "g", Input3: "b" },
-//     props: { "ConvertOutputs(0)": "(Type=Vector3)", … } }
-const convertPins = (node) =>
-  Array.from({ length: node.inputCount ?? 1 }, (_, i) => (i === 0 ? "Input" : `Input${i + 1}`));
+// `inputTypes` gives each input's Type (Scalar when left out, which is the struct default) and
+// its length is the input count unless `inputCount` asks for more. `outputCount` is the length
+// of ConvertOutputs. The output Types and ConvertMappings carry no wires and stay in `props`;
+// ConvertOutputs is padded to `outputCount`, so props only state the entries that differ.
+//
+//   { id: "split", type: "Convert", inputTypes: ["Vector4"], outputCount: 4, in: { Input: "v" },
+//     props: { "ConvertMappings(1)": "(InputComponentIndex=1,OutputIndex=1)", … } }
+//
+// and a consumer taps `split.Output2` … `split.Output4`.
+const CONVERT_TYPES = new Set(["Scalar", "Vector2", "Vector3", "Vector4"]);
+const numbered = (base, count) =>
+  Array.from({ length: count }, (_, i) => (i === 0 ? base : `${base}${i + 1}`));
+
+const convertInputs = (node) => {
+  const types = node.inputTypes ?? [];
+  const count = node.inputCount ?? Math.max(types.length, 1);
+  if (types.length > count) {
+    throw new Error(`Convert "${node.id}" lists ${types.length} inputTypes for inputCount ${count}`);
+  }
+  for (const type of types) {
+    if (type && !CONVERT_TYPES.has(type)) {
+      throw new Error(`Convert "${node.id}" has input type "${type}"; use ${[...CONVERT_TYPES].join(", ")}`);
+    }
+  }
+  return numbered("Input", count);
+};
+const convertOutputs = (node) => numbered("Output", node.outputCount ?? 1);
 
 NODES.Convert = {
   expression: "MaterialExpressionConvert",
-  pins: (node) => convertPins(node).map((name) => [name, {}]),
+  pins: (node) => convertInputs(node).map((name) => [name, { required: true, unnamed: true }]),
+  outs: (node) => convertOutputs(node).map((name) => [name, "", { plain: true }]),
   in: [],
   out: [["Output", "", { plain: true }]],
-  buildProps: (node, wiredOf) => convertPins(node).map((name, i) => {
-    const source = wiredOf(name);
-    return source ? `ConvertInputs(${i})=(ExpressionInput=(${source.ref}))` : `ConvertInputs(${i})=()`;
-  }),
+  buildProps: (node, wiredOf) => {
+    const inputs = convertInputs(node).map((name, i) => {
+      const source = wiredOf(name);
+      const type = node.inputTypes?.[i];
+      const fields = [
+        ...(source ? [`ExpressionInput=(${source.ref})`] : []),
+        ...(type ? [`Type=${type}`] : []),
+      ];
+      return `ConvertInputs(${i})=(${fields.join(",")})`;
+    });
+    const last = convertOutputs(node).length - 1;
+    const stated = Object.keys(node.props ?? {})
+      .map((key) => key.match(/^ConvertOutputs\((\d+)\)$/)?.[1])
+      .filter((index) => index !== undefined)
+      .map(Number);
+    if (stated.some((index) => index > last)) {
+      throw new Error(`Convert "${node.id}" states ConvertOutputs past outputCount ${last + 1}`);
+    }
+    return [
+      ...inputs,
+      ...(stated.includes(last) ? [] : [`ConvertOutputs(${last})=()`]),
+      // Rebuilt from ConvertOutputs on demand, but a real copy carries it, so this one does too.
+      `Outputs(${last})=()`,
+    ];
+  },
 };
 
 // Unreal's string export escapes the backslash first, then the quotes, then the line breaks —

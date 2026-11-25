@@ -66,6 +66,13 @@ A pin that is a literal value field rather than a socket sets `bNotConnectable=T
 in the collapsed section sets `bAdvancedView=True` (the node then also needs
 `AdvancedPinDisplay=Shown`).
 
+An input the expression reports as needing a connection is `"required"` instead. The base
+`IsInputConnectionRequired` answers from a `RequiredInput` meta on an `FExpressionInput`
+property and falls through to *true* when it finds none — so an input kept inside a struct
+array, which no such property describes, is required. `Convert` is the case in hand: its
+`ConvertInputs` pins are all `"required"`. They also have no name, so the editor numbers them
+`Input`, `Input2` … and gives each the same blank `PinFriendlyName` as an output.
+
 **Outputs** add `Direction="EGPD_Output"` and use `PinType.PinCategory="mask"`, where the
 sub-category colours the channel:
 
@@ -84,6 +91,12 @@ below.
 Numbered outputs (`Output`, `Output2`, …) are the Constant\*Vector convention; `TextureSample`
 instead names them after the channels (`RGB`, `R`, `G`, `B`, `A`, `RGBA`). A scalar-valued
 expression is the exception: its single `Output` carries **no** category at all.
+
+`Convert` numbers its outputs the same way, with no category on any of them, and how many it
+has is not fixed by the class: `GetOutputs()` rebuilds `Outputs` from `ConvertOutputs.Num()`
+every time it is called. A copy that taps `OutputIndex=3` therefore needs `ConvertOutputs` to
+reach index 3; a real export writes `ConvertOutputs(3)=()` and `Outputs(3)=()` for a four-way
+split even when every entry is the default.
 
 Every pin also gets `PinFriendlyName=NSLOCTEXT("MaterialGraphNode", "Space", " ")` on outputs,
 and the long tail of `PinType.*` booleans, all `False` in practice.
@@ -200,4 +213,7 @@ version is `check(false)`. The emitter leaves these two off.
 
 Add the node in the Material Editor, wire something into each input, copy it, save the text,
 and run `node reference/survey.mjs <file.t3d>`. It prints each pin's direction, category,
-sub-category and default, which is exactly what a `NODES` entry needs.
+sub-category and default, which is exactly what a `NODES` entry needs. Array properties keep
+their index and the struct fields each entry sets — `ConvertInputs(0){ExpressionInput,Type}` —
+so running it on an emitted graph and on a real copy of the same node shows whether the two
+write the same entries.

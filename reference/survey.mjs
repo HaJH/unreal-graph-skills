@@ -15,6 +15,25 @@ if (!file) {
 
 const field = (line, key) => line.match(new RegExp(`${key}="([^"]*)"`))?.[1] ?? null;
 
+// The top-level field names of a struct value: "(ExpressionInput=(…),Type=Vector4)" gives
+// "ExpressionInput,Type". Nested parentheses and quoted strings are skipped over.
+const structFields = (value) => {
+  const names = [];
+  let depth = 0;
+  let quoted = false;
+  let token = "";
+  for (const ch of value.trim()) {
+    if (ch === '"') quoted = !quoted;
+    if (quoted) continue;
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth -= 1;
+    else if (depth === 1 && ch === "=") names.push(token.trim());
+    if (depth === 1 && /\w/.test(ch)) token += ch;
+    else token = "";
+  }
+  return names.join(",");
+};
+
 // Unreal writes the clipboard at column zero, but text pasted through an editor or a code
 // block often arrives indented, so do not anchor hard to the line start.
 const t3d = readFileSync(file, "utf8");
@@ -29,10 +48,12 @@ for (const block of blocks) {
     ?? block.match(/^\/Script\/\w+\.(\w+)/)?.[1];
   if (!expr) continue;
 
-  // Properties of the expression, minus the bookkeeping every node carries.
-  const props = [...block.matchAll(/^\s{6,}(\w+)=/gm)]
-    .map((m) => m[1])
-    .filter((k) => !/^(MaterialExpressionEditor[XY]|MaterialExpressionGuid|Material)$/.test(k));
+  // Properties of the expression, minus the bookkeeping every node carries. An array entry keeps
+  // its index and lists the struct fields it sets, since an array's shape is in which entries a
+  // copy writes and what each carries: ConvertInputs(0){ExpressionInput,Type}.
+  const props = [...block.matchAll(/^\s{6,}(\w+)(\(\d+\))?=(.*)$/gm)]
+    .filter((m) => !/^(MaterialExpressionEditor[XY]|MaterialExpressionGuid|Material)$/.test(m[1]))
+    .map(([, name, index, value]) => (index ? `${name}${index}{${structFields(value)}}` : name));
 
   const pins = block.split("\n").filter((l) => l.includes("CustomProperties Pin"));
   // The MaterialGraphNode wrapper splits off with nothing of its own; only the expression

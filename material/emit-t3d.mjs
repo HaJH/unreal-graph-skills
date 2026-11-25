@@ -121,9 +121,13 @@ export function emitT3D(spec) {
     // expression property. Derive it from the props unless the spec states one outright.
     const derived = NODES[node.type].pinDefaults?.(node.props ?? {}) ?? {};
     const value = node.values?.[name] ?? derived[name] ?? opts.value;
+    // `unnamed` is a pin the expression gives no name, which the editor numbers and draws blank;
+    // `required` is an input the expression reports as needing a connection.
     return "   CustomProperties Pin ("
       + `PinId=${pinId(node.id, name, "in")},PinName="${name}",`
-      + `PinType.PinCategory="optional",PinType.PinSubCategory="${opts.sub ?? ""}",`
+      + (opts.unnamed ? `PinFriendlyName=NSLOCTEXT("MaterialGraphNode", "Space", " "),` : "")
+      + `PinType.PinCategory="${opts.required ? "required" : "optional"}",`
+      + `PinType.PinSubCategory="${opts.sub ?? ""}",`
       + PIN_TYPE_TAIL
       + (value !== undefined ? `DefaultValue="${value}",` : "")
       + (wired ? linkedTo(node.id, name, "in") : "")
@@ -291,20 +295,30 @@ export function emitT3D(spec) {
 // A value-carrying node states its number twice — as an expression property and as the pin's
 // DefaultValue — and Unreal reads the pin when pasting. If they ever drift, the graph renders
 // correctly but pastes in with the wrong values, which is the worst kind of wrong: silent.
+//
+// Only the channels the pin shows are compared. A Constant3Vector's property is a full linear
+// colour, alpha included, while its rgb pin carries three numbers — the alpha never reaches the
+// pin, so it cannot drift from it.
+const PIN_CHANNELS = { red: 1, green: 1, blue: 1, alpha: 1, rgb: 3, rgba: 4 };
+
 function assertValuesAgree(t3d) {
   const drifted = [];
   for (const block of t3d.split(/^Begin Object Class=/m).slice(1)) {
     const cls = block.match(/\/Script\/Engine\.(MaterialExpression\w+)/)?.[1];
     if (!cls || !/Constant|Parameter/.test(cls)) continue;
     const prop = block.match(/\n\s+(?:R|DefaultValue|Constant)=([^\n]+)/);
-    const pin = block.match(/PinName="([^"]+)"[\s\S]*?DefaultValue="([^"]*)"/);
-    if (!prop || !pin) continue;
+    const pinLine = block.split("\n")
+      .find((line) => line.includes("CustomProperties Pin") && line.includes('DefaultValue="'));
+    if (!prop || !pinLine) continue;
+    const field = (key) => pinLine.match(new RegExp(`${key}="([^"]*)"`))?.[1] ?? "";
+    const [pinName, sub, pinValue] = ["PinName", "PinSubCategory", "DefaultValue"].map(field);
     const numbers = (s) => (s.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
-    const expected = numbers(prop[1]);
-    const actual = numbers(pin[2]);
+    const all = numbers(prop[1]);
+    const expected = all.slice(0, PIN_CHANNELS[sub] ?? all.length);
+    const actual = numbers(pinValue);
     if (!expected.length) continue;
     if (!expected.every((n, i) => Math.abs(n - (actual[i] ?? NaN)) < 1e-6)) {
-      drifted.push(`${cls}: property ${prop[1].trim()} but pin "${pin[1]}" = "${pin[2]}"`);
+      drifted.push(`${cls}: property ${prop[1].trim()} but pin "${pinName}" = "${pinValue}"`);
     }
   }
   if (drifted.length) {
