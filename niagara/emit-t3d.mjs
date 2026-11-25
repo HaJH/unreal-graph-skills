@@ -44,7 +44,9 @@ export function emitT3D(spec) {
   }
 
   const nodeName = (n) => `${NODES[n.type].class}_${n.index}`;
-  const pinId = (id, pin) => guid(`${script}/${id}/${pin}`);
+  // A pin is (node, direction, name): an input and an output can share a name, and keyed by
+  // name alone they would share one PinId and one peer list.
+  const pinId = (id, pin, dir) => guid(`${script}/${id}/${dir}/${pin}`);
   const persistentGuid = (seed) => guid(`${script}/persistent/${seed}`);
   const typeHandle = (t, where) => typeDefHandle(typeOf(t), where);
 
@@ -74,23 +76,23 @@ export function emitT3D(spec) {
         const names = pinsOf.get(node.id).filter((p) => p.dir === "in").map((p) => p.name ?? "<default>");
         throw new Error(`"${node.type}" node "${node.id}" has no input pin "${pinName}" — has ${names.join(", ")}`);
       }
-      links.push({ from: { id: fromId, pin: output.name }, to: { id: node.id, pin: pinName } });
+      links.push({ from: { id: fromId, pin: output.name, dir: "out" }, to: { id: node.id, pin: pinName, dir: "in" } });
     }
   }
 
   autoLayout(nodes, links, spec.layout ?? {});
 
   // LinkedTo is written on both ends, so collect the peers for every pin first.
-  const pinKey = (id, pin) => JSON.stringify([id, pin]);
+  const pinKey = (id, pin, dir) => JSON.stringify([id, dir, pin]);
   const peers = new Map();
   const addPeer = (side, other) => {
-    const key = pinKey(side.id, side.pin);
-    const entry = `${nodeName(byId.get(other.id))} ${pinId(other.id, other.pin)}`;
+    const key = pinKey(side.id, side.pin, side.dir);
+    const entry = `${nodeName(byId.get(other.id))} ${pinId(other.id, other.pin, other.dir)}`;
     peers.set(key, [...(peers.get(key) ?? []), entry]);
   };
   for (const { from, to } of links) { addPeer(from, to); addPeer(to, from); }
-  const linkedTo = (id, pin) => {
-    const list = peers.get(pinKey(id, pin));
+  const linkedTo = (id, pin, dir) => {
+    const list = peers.get(pinKey(id, pin, dir));
     return list ? `LinkedTo=(${list.map((e) => `${e},`).join("")}),` : "";
   };
 
@@ -98,14 +100,14 @@ export function emitT3D(spec) {
     // An unnamed pin (a Map Get default) still needs a stable id, so seed off its position.
     const key = pin.name ?? `#${seq}`;
     const type = pin.type ? typeOf(pin.type) : null;
-    const wired = pin.name ? linkedTo(node.id, pin.name) : "";
+    const wired = pin.name ? linkedTo(node.id, pin.name, pin.dir) : "";
     const value = pin.dir === "in" && !wired && type ? (pin.value ?? type.default) : undefined;
 
     // Field order matches what the editor writes: name, friendly name, tooltip, direction.
     // `friendly` is a rendered value — INVTEXT(..) for a parameter pin, the engine's own
     // NSLOCTEXT for an operator pin — so it goes in verbatim.
     return "   CustomProperties Pin ("
-      + `PinId=${pinId(node.id, key)},`
+      + `PinId=${pinId(node.id, key, pin.dir)},`
       + (pin.name ? `PinName="${pin.name}",` : "")
       + (pin.friendly ? `PinFriendlyName=${pin.friendly},` : "")
       + (pin.tooltip ? `PinToolTip="${pin.tooltip}",` : "")

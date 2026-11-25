@@ -63,10 +63,11 @@ export function emitT3D(spec) {
         from: {
           id: fromId,
           pin: output[0],
+          dir: "out",
           outputIndex: outputs.indexOf(output),
           mask: output[2]?.mask,
         },
-        to: { id: node.id, pin: pinName },
+        to: { id: node.id, pin: pinName, dir: "in" },
       });
     }
   }
@@ -88,20 +89,24 @@ export function emitT3D(spec) {
   // nothing instead. It does not make the local resolution succeed; it removes the wrong answer.
   const tag = material.replace(/\W+/g, "_");
   const exprName = (n) => `${NODES[n.type].expression}_${tag}_${n.index}`;
-  const pinId = (id, pin) => guid(`${material}/${id}/${pin}`);
+  // A pin is (node, direction, name): a function call can have an input and an output with the
+  // same name (ScaleUVsByCenter and FlipBook both take and return "UVs"). Keyed by name alone,
+  // the two share one PinId and one peer list, so a wire into the input lands on the output
+  // too and the paste links two input pins together -- the editor crashes resolving them.
+  const pinId = (id, pin, dir) => guid(`${material}/${id}/${dir}/${pin}`);
 
   // LinkedTo is written on both ends, so collect the peers for every pin. Pin names
   // contain spaces ("Default Value", "A > B"), so the key is encoded, not concatenated.
-  const pinKey = (id, pin) => JSON.stringify([id, pin]);
+  const pinKey = (id, pin, dir) => JSON.stringify([id, dir, pin]);
   const peers = new Map();
   const addPeer = (side, other) => {
-    const key = pinKey(side.id, side.pin);
-    const entry = `${nodeName(byId.get(other.id))} ${pinId(other.id, other.pin)}`;
+    const key = pinKey(side.id, side.pin, side.dir);
+    const entry = `${nodeName(byId.get(other.id))} ${pinId(other.id, other.pin, other.dir)}`;
     peers.set(key, [...(peers.get(key) ?? []), entry]);
   };
   for (const { from, to } of links) { addPeer(from, to); addPeer(to, from); }
-  const linkedTo = (id, pin) => {
-    const list = peers.get(pinKey(id, pin));
+  const linkedTo = (id, pin, dir) => {
+    const list = peers.get(pinKey(id, pin, dir));
     return list ? `LinkedTo=(${list.map((e) => `${e},`).join("")}),` : "";
   };
 
@@ -112,11 +117,11 @@ export function emitT3D(spec) {
     const derived = NODES[node.type].pinDefaults?.(node.props ?? {}) ?? {};
     const value = node.values?.[name] ?? derived[name] ?? opts.value;
     return "   CustomProperties Pin ("
-      + `PinId=${pinId(node.id, name)},PinName="${name}",`
+      + `PinId=${pinId(node.id, name, "in")},PinName="${name}",`
       + `PinType.PinCategory="optional",PinType.PinSubCategory="${opts.sub ?? ""}",`
       + PIN_TYPE_TAIL
       + (value !== undefined ? `DefaultValue="${value}",` : "")
-      + (wired ? linkedTo(node.id, name) : "")
+      + (wired ? linkedTo(node.id, name, "in") : "")
       + "PersistentGuid=00000000000000000000000000000000,bHidden=False,"
       + `bNotConnectable=${flag(opts.fixed)},bDefaultValueIsReadOnly=False,`
       + `bDefaultValueIsIgnored=False,bAdvancedView=${flag(opts.advanced)},bOrphanedPin=False,)`;
@@ -124,11 +129,11 @@ export function emitT3D(spec) {
 
   const outputPin = (node, [name, sub, opts = {}]) =>
     "   CustomProperties Pin ("
-    + `PinId=${pinId(node.id, name)},PinName="${name}",`
+    + `PinId=${pinId(node.id, name, "out")},PinName="${name}",`
     + `PinFriendlyName=NSLOCTEXT("MaterialGraphNode", "Space", " "),Direction="EGPD_Output",`
     + `PinType.PinCategory="${opts.plain ? "" : "mask"}",PinType.PinSubCategory="${sub}",`
     + PIN_TYPE_TAIL
-    + linkedTo(node.id, name)
+    + linkedTo(node.id, name, "out")
     + "PersistentGuid=00000000000000000000000000000000,bHidden=False,bNotConnectable=False,"
     + "bDefaultValueIsReadOnly=False,bDefaultValueIsIgnored=False,bAdvancedView=False,"
     + "bOrphanedPin=False,)";
